@@ -11,19 +11,21 @@ import AuditDetailScreen from '../screens/AuditDetailScreen';
 import ChecklistScreen from '../screens/ChecklistScreen';
 import ItemDetailScreen from '../screens/ItemDetailScreen';
 import { IssuesScreen, ProfileScreen } from '../screens/OtherScreens';
+import SyncScreen from '../screens/SyncScreen';
 
 // ─── What this file does ─────────────────────────────────────────────────────
 // This is the navigation brain of the app.
 // Stack = screens that slide over each other (Login → Home → Detail)
-// Tabs  = bottom bar with Home, Audits, Issues, Profile
+// Tabs  = bottom bar with Home, Audits, Issues, Sync, Profile
 //
 // Structure:
 //   RootStack
 //   ├── Login (no tabs)
 //   └── MainTabs
-//       ├── Home tab → HomeScreen
+//       ├── Home tab  → HomeScreen
 //       │   (+ AuditDetail and Checklist stack on top)
 //       ├── Issues tab → IssuesScreen
+//       ├── Sync tab   → SyncScreen
 //       └── Profile tab → ProfileScreen
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -73,6 +75,13 @@ function MainTabs() {
         component={IssuesScreen}
         options={{
           tabBarIcon: ({ focused }) => <TabIcon emoji="⚠" label="Issues" focused={focused} />,
+        }}
+      />
+      <Tab.Screen
+        name="Sync"
+        component={SyncScreen}
+        options={{
+          tabBarIcon: ({ focused }) => <TabIcon emoji="🔄" label="Sync" focused={focused} />,
         }}
       />
       <Tab.Screen

@@ -3,9 +3,9 @@
 
 export const MOCK_USER = {
   id: 'MA-2024-88',
-  name: 'Amina Bennani',
+  name: 'Ayaman Ligassi',
   inspectorId: '#44021',
-  email: 'a.bennani@sante.gov.ma',
+  email: 'a.ligassi@sante.gov.ma',
   phone: '+212 661-234-567',
   department: 'Infrastructure & Safety',
   role: 'Field Inspector',
