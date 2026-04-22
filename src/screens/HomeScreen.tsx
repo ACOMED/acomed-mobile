@@ -4,6 +4,7 @@ import {
 } from 'react-native';
 import { Colors } from '../theme/colors';
 import { MOCK_USER, MOCK_AUDITS } from '../mocks/data';
+import { useTheme, DarkColors, LightColors } from '../theme/ThemeContext';
 
 // ─── What this screen does ───────────────────────────────────────────────────
 // Shows the inspector's dashboard: welcome card, 3 metrics, list of audits.
@@ -11,6 +12,10 @@ import { MOCK_USER, MOCK_AUDITS } from '../mocks/data';
 // ─────────────────────────────────────────────────────────────────────────────
 
 export default function HomeScreen({ navigation }: any) {
+  // Hooks must be called at the top level of the component
+  const { isDark } = useTheme();
+  const theme = isDark ? DarkColors : LightColors;
+
   // Map status to a tag style
   function getStatusTag(status: string) {
     if (status === 'in_progress') return { bg: Colors.greenLight, color: Colors.greenDark, label: 'In Progress' };
@@ -94,7 +99,7 @@ export default function HomeScreen({ navigation }: any) {
 
               {/* Progress bar */}
               <View style={styles.progressWrap}>
-                <View style={[styles.progressFill, { width: `${audit.progress}%` }]} />
+                <View style={[styles.progressFill, { width: `${audit.progress}%` as any }]} />
               </View>
 
               {/* Footer */}
