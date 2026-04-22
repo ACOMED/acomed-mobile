@@ -1,52 +1,27 @@
 import React, { useState } from 'react';
 import {
-  View, Text, ScrollView, TouchableOpacity, StyleSheet, SafeAreaView,
+  View, Text, ScrollView, TouchableOpacity, StyleSheet, SafeAreaView, Platform,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../theme/colors';
-
-// ─── What this screen does ───────────────────────────────────────────────────
-// Shows sync status for offline-first data: a banner (offline/online),
-// 3 metric cards (pending, last sync, synced today), a Sync Now button
-// with 2-second "Syncing…" state + "Sync Complete ✓" confirmation,
-// and a hardcoded pending queue of 4 items.
-// ─────────────────────────────────────────────────────────────────────────────
+import { useTheme, DarkColors, LightColors } from '../theme/ThemeContext';
 
 type SyncState = 'idle' | 'syncing' | 'done';
 
+// Queue icon names as Ionicons instead of emoji
 const PENDING_QUEUE = [
-  {
-    id: '1',
-    icon: '📋',
-    title: 'Section B — Sterilisation & Infection Control',
-    auditName: 'Hôpital Régional Al Farabi',
-    timestamp: 'Today, 09:14 AM',
-  },
-  {
-    id: '2',
-    icon: '📝',
-    title: 'Section E — Fire Safety & Emergency Exits',
-    auditName: 'Clinique Avicenne',
-    timestamp: 'Today, 08:57 AM',
-  },
-  {
-    id: '3',
-    icon: '🖼️',
-    title: 'Photo evidence — Ward 3 ceiling damage',
-    auditName: 'Centre de Santé Hay Hassani',
-    timestamp: 'Yesterday, 16:30 PM',
-  },
-  {
-    id: '4',
-    icon: '⚠️',
-    title: 'Non-conformity report — Waste disposal',
-    auditName: 'Hôpital Ibn Rochd',
-    timestamp: 'Yesterday, 14:05 PM',
-  },
+  { id: '1', iconName: 'clipboard-outline' as const, title: 'Section B — Sterilisation & Infection Control', auditName: 'Hôpital Régional Al Farabi',       timestamp: 'Today, 09:14 AM' },
+  { id: '2', iconName: 'document-text-outline' as const, title: 'Section E — Fire Safety & Emergency Exits',      auditName: 'Clinique Avicenne',             timestamp: 'Today, 08:57 AM' },
+  { id: '3', iconName: 'camera-outline' as const, title: 'Photo evidence — Ward 3 ceiling damage',        auditName: 'Centre de Santé Hay Hassani',  timestamp: 'Yesterday, 16:30 PM' },
+  { id: '4', iconName: 'warning-outline' as const, title: 'Non-conformity report — Waste disposal',        auditName: 'Hôpital Ibn Rochd',            timestamp: 'Yesterday, 14:05 PM' },
 ];
 
 export default function SyncScreen() {
+  const { isDark } = useTheme();
+  const theme = isDark ? DarkColors : LightColors;
+
   const [syncState, setSyncState] = useState<SyncState>('idle');
-  const isOffline = true; // hardcoded for prototype
+  const isOffline = true;
 
   function handleSyncNow() {
     if (syncState === 'syncing') return;
@@ -55,9 +30,9 @@ export default function SyncScreen() {
   }
 
   function getSyncButtonLabel() {
-    if (syncState === 'syncing') return '⏳  Syncing...';
-    if (syncState === 'done')    return 'Sync Complete ✓';
-    return '🔄  Sync Now';
+    if (syncState === 'syncing') return 'Syncing...';
+    if (syncState === 'done')    return 'Sync Complete';
+    return 'Sync Now';
   }
 
   function getSyncButtonStyle() {
@@ -67,32 +42,30 @@ export default function SyncScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.safe}>
+    <SafeAreaView style={[styles.safe, { backgroundColor: theme.background, paddingTop: Platform.OS === 'android' ? 35 : 0 }]}>
 
       {/* ── TOP BAR ── */}
-      <View style={styles.topBar}>
+      <View style={[styles.topBar, { backgroundColor: theme.white, borderBottomColor: theme.borderColor }]}>
         <View style={styles.topBarLeft}>
-          <View style={styles.logoSmall}>
-            <Text>🔄</Text>
+          <View style={[styles.logoSmall, { borderColor: theme.borderColor }]}>
+            <Ionicons name="sync-outline" size={18} color={Colors.green} />
           </View>
-          <Text style={styles.topBarTitle}>Data Sync</Text>
+          <Text style={[styles.topBarTitle, { color: theme.text }]}>Data Sync</Text>
         </View>
-        <View style={styles.offlineBadge}>
-          <Text style={styles.offlineText}>OFFLINE</Text>
+        <View style={[styles.offlineBadge, { backgroundColor: isDark ? '#1E293B' : Colors.grayLight, borderColor: theme.borderColor }]}>
+          <Text style={[styles.offlineText, { color: theme.text2 }]}>OFFLINE</Text>
         </View>
       </View>
 
       {/* ── SYNC STATUS BANNER ── */}
       <View style={[styles.banner, isOffline ? styles.bannerOffline : styles.bannerOnline]}>
-        <Text style={styles.bannerIcon}>{isOffline ? '📵' : '✅'}</Text>
+        <Ionicons name={isOffline ? 'wifi-outline' : 'wifi'} size={22} color={isOffline ? '#92400E' : Colors.greenDark} />
         <View style={{ flex: 1 }}>
           <Text style={[styles.bannerTitle, { color: isOffline ? '#92400E' : Colors.greenDark }]}>
             {isOffline ? 'You are offline' : 'Connected'}
           </Text>
           <Text style={[styles.bannerSub, { color: isOffline ? '#B45309' : Colors.green }]}>
-            {isOffline
-              ? 'Changes will sync automatically when connected'
-              : 'Sync is active — all changes are uploading'}
+            {isOffline ? 'Changes will sync automatically when connected' : 'Sync is active — all changes are uploading'}
           </Text>
         </View>
         <View style={[styles.statusDot, { backgroundColor: isOffline ? Colors.orange : Colors.green }]} />
@@ -102,25 +75,20 @@ export default function SyncScreen() {
 
         {/* ── METRICS ROW ── */}
         <View style={styles.metricsRow}>
-          {/* Pending items */}
           <View style={[styles.metricCard, { backgroundColor: Colors.orangeLight, borderColor: '#FDE68A' }]}>
-            <Text style={styles.metricIcon}>⏳</Text>
+            <Ionicons name="time-outline" size={22} color={Colors.orange} />
             <Text style={[styles.metricVal, { color: Colors.orange }]}>4</Text>
-            <Text style={styles.metricLbl}>PENDING</Text>
+            <Text style={[styles.metricLbl, { color: theme.text2 }]}>PENDING</Text>
           </View>
-
-          {/* Last sync */}
-          <View style={[styles.metricCard, { backgroundColor: Colors.white }]}>
-            <Text style={styles.metricIcon}>🕐</Text>
-            <Text style={[styles.metricVal, { fontSize: 13, marginTop: 2 }]}>09:41 AM</Text>
-            <Text style={styles.metricLbl}>LAST SYNC</Text>
+          <View style={[styles.metricCard, { backgroundColor: theme.cardBg, borderColor: theme.borderColor }]}>
+            <Ionicons name="sync-outline" size={22} color={theme.text2} />
+            <Text style={[styles.metricVal, { fontSize: 13, marginTop: 2, color: theme.text }]}>09:41 AM</Text>
+            <Text style={[styles.metricLbl, { color: theme.text2 }]}>LAST SYNC</Text>
           </View>
-
-          {/* Synced today */}
           <View style={[styles.metricCard, { backgroundColor: Colors.greenLight, borderColor: '#A7F3D0' }]}>
-            <Text style={styles.metricIcon}>✅</Text>
+            <Ionicons name="checkmark-circle-outline" size={22} color={Colors.green} />
             <Text style={[styles.metricVal, { color: Colors.green }]}>18</Text>
-            <Text style={styles.metricLbl}>SYNCED TODAY</Text>
+            <Text style={[styles.metricLbl, { color: theme.text2 }]}>SYNCED TODAY</Text>
           </View>
         </View>
 
@@ -131,26 +99,39 @@ export default function SyncScreen() {
           activeOpacity={0.8}
           disabled={syncState === 'syncing'}
         >
-          <Text style={styles.syncBtnText}>{getSyncButtonLabel()}</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            <Ionicons
+              name={syncState === 'done' ? 'checkmark-circle' : 'sync'}
+              size={18}
+              color={Colors.white}
+            />
+            <Text style={styles.syncBtnText}>{getSyncButtonLabel()}</Text>
+          </View>
         </TouchableOpacity>
 
         {/* ── PENDING QUEUE ── */}
         <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Pending Queue</Text>
+          <Text style={[styles.sectionTitle, { color: theme.text }]}>Pending Queue</Text>
           <View style={styles.countBadge}>
             <Text style={styles.countBadgeText}>{PENDING_QUEUE.length} items</Text>
           </View>
         </View>
 
-        {PENDING_QUEUE.map((item, index) => (
-          <View key={item.id} style={styles.queueCard}>
-            <View style={styles.queueIconWrap}>
-              <Text style={{ fontSize: 20 }}>{item.icon}</Text>
+        {PENDING_QUEUE.map((item) => (
+          <View key={item.id} style={[styles.queueCard, { backgroundColor: theme.cardBg, borderColor: theme.borderColor }]}>
+            <View style={[styles.queueIconWrap, { backgroundColor: isDark ? '#1E293B' : Colors.grayLight, borderColor: theme.borderColor }]}>
+              <Ionicons name={item.iconName} size={20} color={Colors.green} />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={styles.queueTitle} numberOfLines={2}>{item.title}</Text>
-              <Text style={styles.queueAudit}>📍 {item.auditName}</Text>
-              <Text style={styles.queueTime}>🕐 {item.timestamp}</Text>
+              <Text style={[styles.queueTitle, { color: theme.text }]} numberOfLines={2}>{item.title}</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 2 }}>
+                <Ionicons name="location-outline" size={11} color={theme.text2} />
+                <Text style={[styles.queueAudit, { color: theme.text2 }]}>{item.auditName}</Text>
+              </View>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                <Ionicons name="time-outline" size={11} color={theme.text3} />
+                <Text style={[styles.queueTime, { color: theme.text3 }]}>{item.timestamp}</Text>
+              </View>
             </View>
             <View style={styles.queueBadge}>
               <Text style={styles.queueBadgeText}>PENDING</Text>
@@ -165,66 +146,46 @@ export default function SyncScreen() {
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: Colors.background },
-
-  // Top bar — matches HomeScreen / OtherScreens exactly
+  safe: { flex: 1 },
   topBar: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     paddingHorizontal: 20, paddingVertical: 10,
-    borderBottomWidth: 1, borderBottomColor: Colors.grayBorder,
-    backgroundColor: Colors.white,
+    borderBottomWidth: 1,
   },
   topBarLeft: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   logoSmall: {
     width: 32, height: 32, borderRadius: 8,
-    borderWidth: 1.5, borderColor: Colors.grayBorder,
+    borderWidth: 1.5,
     alignItems: 'center', justifyContent: 'center',
   },
-  topBarTitle: { fontSize: 17, fontWeight: '600', color: Colors.text },
+  topBarTitle: { fontSize: 17, fontWeight: '600' },
   offlineBadge: {
-    backgroundColor: Colors.grayLight, borderWidth: 1,
-    borderColor: Colors.grayBorder, borderRadius: 20,
+    borderWidth: 1, borderRadius: 20,
     paddingHorizontal: 10, paddingVertical: 4,
   },
-  offlineText: { fontSize: 11, fontWeight: '700', color: Colors.text2 },
-
-  // Status banner
+  offlineText: { fontSize: 11, fontWeight: '700' },
   banner: {
     flexDirection: 'row', alignItems: 'center',
     paddingHorizontal: 16, paddingVertical: 12, gap: 10,
     borderBottomWidth: 1,
   },
-  bannerOffline: {
-    backgroundColor: Colors.orangeLight,
-    borderBottomColor: '#FDE68A',
-  },
-  bannerOnline: {
-    backgroundColor: Colors.greenLight,
-    borderBottomColor: '#A7F3D0',
-  },
-  bannerIcon: { fontSize: 22 },
+  bannerOffline: { backgroundColor: Colors.orangeLight, borderBottomColor: '#FDE68A' },
+  bannerOnline:  { backgroundColor: Colors.greenLight,  borderBottomColor: '#A7F3D0' },
   bannerTitle: { fontSize: 14, fontWeight: '700' },
   bannerSub: { fontSize: 12, marginTop: 1 },
   statusDot: { width: 10, height: 10, borderRadius: 5 },
-
   body: { flex: 1, padding: 16 },
-
-  // Metric cards
   metricsRow: { flexDirection: 'row', gap: 10, marginBottom: 16 },
   metricCard: {
     flex: 1, borderRadius: 14, borderWidth: 1,
-    borderColor: Colors.grayBorder,
     padding: 12, alignItems: 'center',
   },
-  metricIcon: { fontSize: 20, marginBottom: 4 },
-  metricVal: { fontSize: 22, fontWeight: '700', color: Colors.text },
+  metricVal: { fontSize: 22, fontWeight: '700', marginTop: 4 },
   metricLbl: {
-    fontSize: 9, fontWeight: '700', color: Colors.text2,
+    fontSize: 9, fontWeight: '700',
     letterSpacing: 0.5, marginTop: 4, textTransform: 'uppercase',
     textAlign: 'center',
   },
-
-  // Sync Now button
   syncBtn: {
     backgroundColor: Colors.green, borderRadius: 14,
     paddingVertical: 15, alignItems: 'center',
@@ -233,39 +194,33 @@ const styles = StyleSheet.create({
   syncBtnSyncing: { backgroundColor: Colors.orange },
   syncBtnDone: { backgroundColor: Colors.greenMid },
   syncBtnText: { color: Colors.white, fontSize: 15, fontWeight: '700', letterSpacing: 0.3 },
-
-  // Section header
   sectionHeader: {
     flexDirection: 'row', alignItems: 'center',
     justifyContent: 'space-between', marginBottom: 10,
   },
-  sectionTitle: { fontSize: 15, fontWeight: '700', color: Colors.text },
+  sectionTitle: { fontSize: 15, fontWeight: '700' },
   countBadge: {
     backgroundColor: Colors.orangeLight, borderRadius: 99,
     paddingHorizontal: 10, paddingVertical: 3,
     borderWidth: 1, borderColor: '#FDE68A',
   },
   countBadgeText: { fontSize: 11, fontWeight: '700', color: Colors.orange },
-
-  // Queue items
   queueCard: {
-    backgroundColor: Colors.white, borderRadius: 14,
-    borderWidth: 1, borderColor: Colors.grayBorder,
+    borderRadius: 14, borderWidth: 1,
     padding: 14, marginBottom: 10,
     flexDirection: 'row', alignItems: 'flex-start', gap: 12,
   },
   queueIconWrap: {
     width: 40, height: 40, borderRadius: 10,
-    backgroundColor: Colors.grayLight, borderWidth: 1,
-    borderColor: Colors.grayBorder,
+    borderWidth: 1,
     alignItems: 'center', justifyContent: 'center',
   },
   queueTitle: {
-    fontSize: 13, fontWeight: '600', color: Colors.text,
+    fontSize: 13, fontWeight: '600',
     lineHeight: 18, marginBottom: 4,
   },
-  queueAudit: { fontSize: 12, color: Colors.text2, marginBottom: 2 },
-  queueTime: { fontSize: 11, color: Colors.text3 },
+  queueAudit: { fontSize: 12, marginBottom: 2 },
+  queueTime: { fontSize: 11 },
   queueBadge: {
     backgroundColor: Colors.orangeLight, borderRadius: 99,
     paddingHorizontal: 8, paddingVertical: 3,

@@ -1,19 +1,16 @@
 import React, { useState } from 'react';
 import {
-  View, Text, ScrollView, TouchableOpacity, StyleSheet, SafeAreaView,
+  View, Text, ScrollView, TouchableOpacity, StyleSheet, SafeAreaView, Platform,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../theme/colors';
 import { MOCK_QUESTIONS } from '../mocks/data';
-
-// ─── KEY CONCEPT: Conditional Logic ──────────────────────────────────────────
-// Each question has a `prerequisiteId`. If that ID exists, we check whether
-// the prerequisite question has been answered with 'pass'. If not — the
-// question is BLOCKED (shown as non-evaluable, grayed out).
-// This is the core engine from the PRD Section 9.6.
-// ─────────────────────────────────────────────────────────────────────────────
+import { useTheme, DarkColors, LightColors } from '../theme/ThemeContext';
 
 export default function ChecklistScreen({ route, navigation }: any) {
-  // responses stores the current answers: { questionId: 'pass' | 'fail' | 'na' }
+  const { isDark } = useTheme();
+  const theme = isDark ? DarkColors : LightColors;
+
   const [responses, setResponses] = useState<Record<string, string>>({
     'hyg-01': 'pass',
     'hyg-02': 'fail',
@@ -21,46 +18,40 @@ export default function ChecklistScreen({ route, navigation }: any) {
     'adm-01': 'na',
   });
 
-  // Check if a question is blocked by its prerequisite
   function isBlocked(question: typeof MOCK_QUESTIONS[0]): boolean {
     if (!question.prerequisiteId) return false;
-    const prereqAnswer = responses[question.prerequisiteId];
-    // Blocked if prerequisite hasn't been answered with 'pass'
-    return prereqAnswer !== 'pass';
+    return responses[question.prerequisiteId] !== 'pass';
   }
 
-  // Set a response for a question
   function setResponse(questionId: string, value: string) {
     setResponses(prev => ({ ...prev, [questionId]: value }));
   }
 
-  // Group questions by section
   const sections = [...new Set(MOCK_QUESTIONS.map(q => q.sectionLabel))];
-
-  // Calculate progress
   const applicable = MOCK_QUESTIONS.filter(q => !isBlocked(q));
   const answered = applicable.filter(q => responses[q.id]);
   const progress = applicable.length > 0 ? Math.round((answered.length / applicable.length) * 100) : 0;
 
   return (
-    <SafeAreaView style={styles.safe}>
+    <SafeAreaView style={[styles.safe, { backgroundColor: theme.background, paddingTop: Platform.OS === 'android' ? 35 : 0 }]}>
+
       {/* ── TOP BAR ── */}
-      <View style={styles.topBar}>
+      <View style={[styles.topBar, { backgroundColor: theme.white, borderBottomColor: theme.borderColor }]}>
         <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Text style={styles.backBtn}>‹</Text>
+          <Text style={[styles.backBtn, { color: theme.text }]}>‹</Text>
         </TouchableOpacity>
-        <Text style={styles.topBarTitle}>Checklist</Text>
-        <View style={styles.offlineBadge}>
-          <Text style={styles.offlineText}>OFFLINE</Text>
+        <Text style={[styles.topBarTitle, { color: theme.text }]}>Checklist</Text>
+        <View style={[styles.offlineBadge, { backgroundColor: isDark ? '#1E293B' : Colors.grayLight, borderColor: theme.borderColor }]}>
+          <Text style={[styles.offlineText, { color: theme.text2 }]}>OFFLINE</Text>
         </View>
       </View>
 
-      {/* ── PROGRESS MINI BAR ── */}
-      <View style={styles.progressContainer}>
-        <View style={styles.progressWrap}>
+      {/* ── PROGRESS BAR ── */}
+      <View style={[styles.progressContainer, { backgroundColor: theme.white, borderBottomColor: theme.borderColor }]}>
+        <View style={[styles.progressWrap, { backgroundColor: theme.borderColor }]}>
           <View style={[styles.progressFill, { width: `${progress}%` as any }]} />
         </View>
-        <Text style={styles.progressLabel}>{answered.length}/{applicable.length} items • {progress}%</Text>
+        <Text style={[styles.progressLabel, { color: theme.text2 }]}>{answered.length}/{applicable.length} items • {progress}%</Text>
       </View>
 
       <ScrollView style={styles.body} showsVerticalScrollIndicator={false}>
@@ -68,24 +59,33 @@ export default function ChecklistScreen({ route, navigation }: any) {
           const sectionQuestions = MOCK_QUESTIONS.filter(q => q.sectionLabel === sectionLabel);
           return (
             <View key={sectionLabel}>
-              {/* Section header */}
               <View style={styles.sectionHeader}>
                 <View style={styles.sectionLine} />
-                <Text style={styles.sectionLabel}>{sectionLabel}</Text>
+                <Text style={[styles.sectionLabel, { color: theme.text2 }]}>{sectionLabel}</Text>
               </View>
 
               {sectionQuestions.map(q => {
                 const blocked = isBlocked(q);
-                const currentResponse = responses[q.id];
+                const cur = responses[q.id];
+
+                // Pick name for the circle indicator
+                let circleIconName: any = 'ellipse-outline';
+                let circleIconColor = theme.text3;
+                if (cur === 'pass')  { circleIconName = 'checkmark'; circleIconColor = Colors.green; }
+                if (cur === 'fail')  { circleIconName = 'close';     circleIconColor = Colors.red; }
+                if (cur === 'na')    { circleIconName = 'remove';    circleIconColor = '#94A3B8'; }
 
                 return (
                   <TouchableOpacity
                     key={q.id}
-                    style={[styles.questionCard, blocked && styles.questionCardBlocked]}
+                    style={[
+                      styles.questionCard,
+                      { backgroundColor: theme.cardBg, borderColor: theme.borderColor },
+                      blocked && styles.questionCardBlocked,
+                    ]}
                     onPress={() => !blocked && navigation.navigate('ItemDetail', { questionId: q.id })}
                     disabled={blocked}
                   >
-                    {/* Header row */}
                     <View style={styles.qHeader}>
                       <View style={styles.qHeaderLeft}>
                         <View style={styles.qCodeBadge}>
@@ -93,54 +93,53 @@ export default function ChecklistScreen({ route, navigation }: any) {
                         </View>
                         {/* Status tag */}
                         {blocked ? (
-                          <View style={[styles.tag, { backgroundColor: '#F1F5F9' }]}>
+                          <View style={[styles.tag, { backgroundColor: isDark ? '#1E293B' : '#F1F5F9' }]}>
                             <Text style={[styles.tagText, { color: '#64748B' }]}>Blocked</Text>
                           </View>
-                        ) : currentResponse === 'pass' ? (
+                        ) : cur === 'pass' ? (
                           <View style={[styles.tag, { backgroundColor: Colors.greenLight }]}>
                             <Text style={[styles.tagText, { color: Colors.greenDark }]}>Pass</Text>
                           </View>
-                        ) : currentResponse === 'fail' ? (
+                        ) : cur === 'fail' ? (
                           <View style={[styles.tag, { backgroundColor: Colors.redLight }]}>
                             <Text style={[styles.tagText, { color: Colors.red }]}>Fail</Text>
                           </View>
-                        ) : currentResponse === 'na' ? (
-                          <View style={[styles.tag, { backgroundColor: '#F1F5F9' }]}>
+                        ) : cur === 'na' ? (
+                          <View style={[styles.tag, { backgroundColor: isDark ? '#1E293B' : '#F1F5F9' }]}>
                             <Text style={[styles.tagText, { color: '#475569' }]}>N/A</Text>
                           </View>
                         ) : (
-                          <View style={[styles.tag, { backgroundColor: Colors.grayLight }]}>
-                            <Text style={[styles.tagText, { color: Colors.gray }]}>Pending</Text>
+                          <View style={[styles.tag, { backgroundColor: isDark ? '#1E293B' : Colors.grayLight }]}>
+                            <Text style={[styles.tagText, { color: isDark ? '#94A3B8' : Colors.gray }]}>Pending</Text>
                           </View>
                         )}
                       </View>
                       {/* Circle indicator */}
                       <View style={[
                         styles.circleIndicator,
-                        currentResponse === 'pass' && styles.circlePass,
-                        currentResponse === 'fail' && styles.circleFail,
-                        currentResponse === 'na' && styles.circleNa,
-                        blocked && styles.circleBlocked,
+                        { borderColor: theme.borderColor },
+                        cur === 'pass' && styles.circlePass,
+                        cur === 'fail' && styles.circleFail,
+                        cur === 'na'   && styles.circleNa,
+                        blocked        && { borderColor: theme.borderColor, backgroundColor: isDark ? '#1E293B' : Colors.grayLight },
                       ]}>
-                        <Text style={{ fontSize: 14, color: currentResponse === 'pass' ? Colors.green : currentResponse === 'fail' ? Colors.red : Colors.text3 }}>
-                          {currentResponse === 'pass' ? '✓' : currentResponse === 'fail' ? '✗' : currentResponse === 'na' ? '−' : '○'}
-                        </Text>
+                        <Ionicons name={circleIconName} size={14} color={circleIconColor} />
                       </View>
                     </View>
 
-                    {/* Question text */}
-                    <Text style={[styles.qText, blocked && { color: Colors.text3 }]}>
-                      {blocked ? '⛔ Blocked — prerequisite not met' : q.text}
+                    <Text style={[styles.qText, { color: blocked ? theme.text3 : theme.text }]}>
+                      {blocked ? 'Blocked — prerequisite not met' : q.text}
                     </Text>
 
-                    {/* Meta row */}
                     <View style={styles.qMeta}>
-                      <Text style={styles.qMetaText}>
-                        {q.hasPhoto ? '📷 Photo' : '📷 No Photo'}
-                      </Text>
-                      <Text style={styles.qMetaText}>
-                        {q.hasNote ? '📄 Note' : '📄 No Note'}
-                      </Text>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                        <Ionicons name="camera-outline" size={12} color={theme.text3} />
+                        <Text style={[styles.qMetaText, { color: theme.text3 }]}>{q.hasPhoto ? 'Photo' : 'No Photo'}</Text>
+                      </View>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                        <Ionicons name="document-text-outline" size={12} color={theme.text3} />
+                        <Text style={[styles.qMetaText, { color: theme.text3 }]}>{q.hasNote ? 'Note' : 'No Note'}</Text>
+                      </View>
                     </View>
                   </TouchableOpacity>
                 );
@@ -149,51 +148,50 @@ export default function ChecklistScreen({ route, navigation }: any) {
           );
         })}
 
-        <Text style={styles.endLabel}>END OF CHECKLIST</Text>
+        <Text style={[styles.endLabel, { color: theme.text3 }]}>END OF CHECKLIST</Text>
         <View style={{ height: 120 }} />
       </ScrollView>
 
       {/* ── BOTTOM FINISH BUTTON ── */}
-      <View style={styles.bottomBar}>
+      <View style={[styles.bottomBar, { backgroundColor: theme.white, borderTopColor: theme.borderColor }]}>
         <TouchableOpacity style={styles.btnFinish}>
-          <Text style={styles.btnFinishText}>✓ Terminer la visite</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            <Ionicons name="checkmark" size={18} color={Colors.white} />
+            <Text style={styles.btnFinishText}>Terminer la visite</Text>
+          </View>
         </TouchableOpacity>
-        <Text style={styles.savedLabel}>💾 Enregistrer localement • Dernière sauvegarde: il y a 2 min</Text>
+        <Text style={[styles.savedLabel, { color: theme.text3 }]}>Enregistrer localement • Dernière sauvegarde: il y a 2 min</Text>
       </View>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: Colors.background },
+  safe: { flex: 1 },
   topBar: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     paddingHorizontal: 20, paddingVertical: 10,
-    borderBottomWidth: 1, borderBottomColor: Colors.grayBorder,
-    backgroundColor: Colors.white,
+    borderBottomWidth: 1,
   },
-  backBtn: { fontSize: 28, color: Colors.text, lineHeight: 32 },
-  topBarTitle: { fontSize: 17, fontWeight: '600', color: Colors.text },
+  backBtn: { fontSize: 28, lineHeight: 32 },
+  topBarTitle: { fontSize: 17, fontWeight: '600' },
   offlineBadge: {
-    backgroundColor: Colors.grayLight, borderWidth: 1,
-    borderColor: Colors.grayBorder, borderRadius: 20,
+    borderWidth: 1, borderRadius: 20,
     paddingHorizontal: 10, paddingVertical: 4,
   },
-  offlineText: { fontSize: 11, fontWeight: '700', color: Colors.text2 },
+  offlineText: { fontSize: 11, fontWeight: '700' },
   progressContainer: {
-    backgroundColor: Colors.white, padding: 12,
-    borderBottomWidth: 1, borderBottomColor: Colors.grayBorder,
+    padding: 12, borderBottomWidth: 1,
   },
-  progressWrap: { height: 6, backgroundColor: Colors.grayBorder, borderRadius: 99, overflow: 'hidden', marginBottom: 6 },
+  progressWrap: { height: 6, borderRadius: 99, overflow: 'hidden', marginBottom: 6 },
   progressFill: { height: '100%', backgroundColor: Colors.green, borderRadius: 99 },
-  progressLabel: { fontSize: 12, color: Colors.text2, textAlign: 'right' },
+  progressLabel: { fontSize: 12, textAlign: 'right' },
   body: { flex: 1, padding: 16 },
   sectionHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 12, marginBottom: 8 },
   sectionLine: { width: 18, height: 3, backgroundColor: Colors.green, borderRadius: 2 },
-  sectionLabel: { fontSize: 11, fontWeight: '700', color: Colors.text2, letterSpacing: 0.7, textTransform: 'uppercase' },
+  sectionLabel: { fontSize: 11, fontWeight: '700', letterSpacing: 0.7, textTransform: 'uppercase' },
   questionCard: {
-    backgroundColor: Colors.white, borderRadius: 14,
-    borderWidth: 1, borderColor: Colors.grayBorder,
+    borderRadius: 14, borderWidth: 1,
     padding: 14, marginBottom: 10,
   },
   questionCardBlocked: { opacity: 0.5 },
@@ -208,25 +206,23 @@ const styles = StyleSheet.create({
   tagText: { fontSize: 12, fontWeight: '600' },
   circleIndicator: {
     width: 28, height: 28, borderRadius: 14,
-    borderWidth: 2, borderColor: Colors.grayBorder,
+    borderWidth: 2,
     alignItems: 'center', justifyContent: 'center',
   },
   circlePass: { borderColor: Colors.green, backgroundColor: Colors.greenLight },
   circleFail: { borderColor: Colors.red, backgroundColor: Colors.redLight },
   circleNa: { borderColor: '#94A3B8', backgroundColor: '#F1F5F9' },
-  circleBlocked: { borderColor: Colors.grayBorder, backgroundColor: Colors.grayLight },
-  qText: { fontSize: 14, color: Colors.text, lineHeight: 20, marginTop: 8, marginBottom: 6 },
-  qMeta: { flexDirection: 'row', gap: 10 },
-  qMetaText: { fontSize: 11, color: Colors.text3 },
-  endLabel: { textAlign: 'center', fontSize: 11, color: Colors.text3, padding: 12 },
+  qText: { fontSize: 14, lineHeight: 20, marginTop: 8, marginBottom: 6 },
+  qMeta: { flexDirection: 'row', gap: 12 },
+  qMetaText: { fontSize: 11 },
+  endLabel: { textAlign: 'center', fontSize: 11, padding: 12 },
   bottomBar: {
-    backgroundColor: Colors.white, borderTopWidth: 1,
-    borderTopColor: Colors.grayBorder, padding: 12,
+    borderTopWidth: 1, padding: 12,
   },
   btnFinish: {
     backgroundColor: Colors.green, borderRadius: 14,
     padding: 16, alignItems: 'center',
   },
   btnFinishText: { color: Colors.white, fontSize: 16, fontWeight: '600' },
-  savedLabel: { textAlign: 'center', fontSize: 11, color: Colors.text3, marginTop: 6, marginBottom: 4 },
+  savedLabel: { textAlign: 'center', fontSize: 11, marginTop: 6, marginBottom: 4 },
 });
