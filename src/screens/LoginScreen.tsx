@@ -48,12 +48,15 @@ export default function LoginScreen({ navigation }: any) {
           {/* ── LOGO ── */}
           <View style={styles.logoWrap}>
             <Image
-              source={require('../../assets/ACOMED_MEDICAL_SOLUTION.png')}
-              style={styles.logo}
+              source={require('../../assets/ACOMED.jpeg')}
+              style={styles.logoIcon}
               resizeMode="contain"
             />
-            <Text style={styles.subtitle}>Field Inspection Platform</Text>
-            <View style={styles.divider} />
+            <Image
+              source={require('../../assets/ACOMED_MEDICAL_SOLUTION.png')}
+              style={styles.logoWordmark}
+              resizeMode="contain"
+            />
           </View>
 
           {/* ── LOGIN CARD ── */}
@@ -141,22 +144,14 @@ const styles = StyleSheet.create({
     paddingTop: 32,
     paddingBottom: 24,
   },
-  logo: {
+  logoIcon: {
+    width: 120,
+    height: 120,
+  },
+  logoWordmark: {
     width: 220,
-    height: 80,
-  },
-  subtitle: {
-    fontSize: 13,
-    color: '#6B7280',
+    height: 70,
     marginTop: 8,
-    textAlign: 'center',
-  },
-  divider: {
-    marginTop: 20,
-    height: 1.5,
-    width: '100%',
-    backgroundColor: Colors.green,
-    opacity: 0.25,
   },
 
   // ── Card ──
