@@ -8,13 +8,18 @@ import { Colors } from '../theme/colors';
 import { MOCK_USER, MOCK_AUDITS } from '../mocks/data';
 import { useTheme, DarkColors, LightColors } from '../theme/ThemeContext';
 
+const ASSIGNED_AUDITS = [
+  { id: 'audit-004', hospitalType: 'Regional Hospital',  hospitalName: 'Hôpital Al Ghassani',       location: 'Fès, Maroc',   status: 'assigned' },
+  { id: 'audit-005', hospitalType: 'Public Clinic',      hospitalName: 'Centre de Santé Hay Nahda', location: 'Rabat, Maroc', status: 'assigned' },
+];
+
 export default function HomeScreen({ navigation }: any) {
   const { isDark } = useTheme();
   const theme = isDark ? DarkColors : LightColors;
 
   function getStatusTag(status: string) {
     if (status === 'in_progress') return { bg: Colors.greenLight, color: Colors.greenDark, label: 'In Progress' };
-    if (status === 'completed')   return { bg: '#D1FAE5', color: '#065F46', label: 'Completed' };
+    if (status === 'completed')   return { bg: '#D1FAE5',         color: '#065F46',        label: 'Completed'   };
     return { bg: isDark ? '#1E293B' : Colors.grayLight, color: isDark ? '#94A3B8' : Colors.gray, label: 'Pending' };
   }
 
@@ -65,7 +70,7 @@ export default function HomeScreen({ navigation }: any) {
           </View>
         </View>
 
-        {/* ── AUDIT LIST ── */}
+        {/* ── ACTIVE AUDITS ── */}
         <View style={styles.listHeader}>
           <Text style={[styles.listTitle, { color: theme.text }]}>Active Audits</Text>
           <TouchableOpacity>
@@ -113,7 +118,50 @@ export default function HomeScreen({ navigation }: any) {
           );
         })}
 
-        <Text style={[styles.tagline, { color: theme.text3 }]}>"Ensuring healthcare excellence across Morocco."</Text>
+        {/* ── ASSIGNED — NOT STARTED ── */}
+        <View style={[styles.listHeader, { marginTop: 8 }]}>
+          <Text style={[styles.listTitle, { color: theme.text }]}>Assigned — Not Started</Text>
+          <View style={[styles.countBadge, { backgroundColor: isDark ? '#1E293B' : Colors.grayLight, borderColor: theme.borderColor }]}>
+            <Text style={[styles.countBadgeText, { color: theme.text2 }]}>{ASSIGNED_AUDITS.length}</Text>
+          </View>
+        </View>
+
+        {ASSIGNED_AUDITS.map((audit) => (
+          <View
+            key={audit.id}
+            style={[styles.auditCard, { backgroundColor: theme.cardBg, borderColor: theme.borderColor }]}
+          >
+            <View style={styles.auditCardHeader}>
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.auditType, { color: theme.text2 }]}>{audit.hospitalType}</Text>
+                <Text style={[styles.auditName, { color: theme.text }]}>{audit.hospitalName}</Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 }}>
+                  <Ionicons name="location-outline" size={12} color={theme.text2} />
+                  <Text style={[styles.auditLocation, { color: theme.text2 }]}>{audit.location}</Text>
+                </View>
+              </View>
+              {/* Gray "Assigned" tag */}
+              <View style={[styles.tag, { backgroundColor: isDark ? '#1E293B' : Colors.grayLight }]}>
+                <Text style={[styles.tagText, { color: isDark ? '#94A3B8' : Colors.gray }]}>Assigned</Text>
+              </View>
+            </View>
+
+            {/* Divider */}
+            <View style={[styles.divider, { backgroundColor: theme.borderColor }]} />
+
+            {/* Start Audit button */}
+            <TouchableOpacity
+              style={styles.startAuditBtn}
+              activeOpacity={0.8}
+              onPress={() => navigation.navigate('AuditDetail', { auditId: audit.id })}
+            >
+              <Ionicons name="play-circle-outline" size={15} color={Colors.white} />
+              <Text style={styles.startAuditText}>Start Audit</Text>
+            </TouchableOpacity>
+          </View>
+        ))}
+
+        <Text style={[styles.tagline, { color: theme.text2 }]}>"Ensuring healthcare excellence across Morocco."</Text>
         <View style={{ height: 100 }} />
       </ScrollView>
     </SafeAreaView>
@@ -178,6 +226,11 @@ const styles = StyleSheet.create({
   },
   listTitle: { fontSize: 15, fontWeight: '700' },
   viewAll: { fontSize: 13, color: Colors.green, fontWeight: '600' },
+  countBadge: {
+    borderWidth: 1, borderRadius: 99,
+    paddingHorizontal: 8, paddingVertical: 2,
+  },
+  countBadgeText: { fontSize: 11, fontWeight: '700' },
   auditCard: {
     borderRadius: 16, borderWidth: 1,
     padding: 16, marginBottom: 12,
@@ -193,5 +246,13 @@ const styles = StyleSheet.create({
   auditFooter: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 10 },
   footerText: { fontSize: 12 },
   footerLink: { fontSize: 12, color: Colors.green, fontWeight: '600' },
+  divider: { height: 1, marginVertical: 12 },
+  startAuditBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    backgroundColor: Colors.green, borderRadius: 99,
+    paddingHorizontal: 14, paddingVertical: 8,
+    alignSelf: 'flex-start',
+  },
+  startAuditText: { color: Colors.white, fontSize: 13, fontWeight: '600' },
   tagline: { textAlign: 'center', fontSize: 13, fontStyle: 'italic', marginTop: 8, paddingBottom: 8 },
 });

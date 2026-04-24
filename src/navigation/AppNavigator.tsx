@@ -1,38 +1,42 @@
 import React from 'react';
+import { View, Text } from 'react-native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
-import { Colors } from '../theme/colors';
+import { useTheme, DarkColors, LightColors } from '../theme/ThemeContext';
 
 // Import all screens
-import LoginScreen from '../screens/LoginScreen';
-import HomeScreen from '../screens/HomeScreen';
-import AuditDetailScreen from '../screens/AuditDetailScreen';
-import ChecklistScreen from '../screens/ChecklistScreen';
-import ItemDetailScreen from '../screens/ItemDetailScreen';
-import { IssuesScreen, ProfileScreen } from '../screens/OtherScreens';
-import SyncScreen from '../screens/SyncScreen';
+import LoginScreen           from '../screens/LoginScreen';
+import HomeScreen            from '../screens/HomeScreen';
+import AuditDetailScreen     from '../screens/AuditDetailScreen';
+import ChecklistScreen       from '../screens/ChecklistScreen';
+import ItemDetailScreen      from '../screens/ItemDetailScreen';
+import { ProfileScreen }     from '../screens/OtherScreens';
+import SyncScreen            from '../screens/SyncScreen';
+import NotificationsScreen   from '../screens/NotificationsScreen';
 
 // ─── What this file does ─────────────────────────────────────────────────────
 // This is the navigation brain of the app.
 // Stack = screens that slide over each other (Login → Home → Detail)
-// Tabs  = bottom bar with Home, Issues, Sync, Profile
+// Tabs  = bottom bar with Home, Notifications, Sync, Profile
 //
 // Structure:
 //   RootStack
 //   ├── Login (no tabs)
 //   └── MainTabs
-//       ├── Home tab     → HomeScreen (+ AuditDetail, Checklist, ItemDetail stack)
-//       ├── Issues tab   → IssuesScreen
-//       ├── Sync tab     → SyncScreen
-//       └── Profile tab  → ProfileScreen
+//       ├── Home tab          → HomeScreen (+ AuditDetail, Checklist, ItemDetail stack)
+//       ├── Notifications tab → NotificationsScreen (badge: 3)
+//       ├── Sync tab          → SyncScreen
+//       └── Profile tab       → ProfileScreen
 // ─────────────────────────────────────────────────────────────────────────────
 
-const ACTIVE_COLOR   = '#1A6B4A';   // filled icon color
-const INACTIVE_COLOR = '#6B7280';   // outline icon color
+const ACTIVE_COLOR   = '#1A6B4A';
+const INACTIVE_COLOR = '#6B7280';
 
-const Stack = createNativeStackNavigator();
-const Tab   = createBottomTabNavigator();
+const NOTIFICATION_BADGE_COUNT = 3;
+
+const Stack     = createNativeStackNavigator();
+const Tab       = createBottomTabNavigator();
 const HomeStack = createNativeStackNavigator();
 
 // The stack inside the Home tab — allows navigating to audit detail, checklist, etc.
@@ -49,6 +53,9 @@ function HomeStackNavigator() {
 
 // Main tab bar — shown after login
 function MainTabs() {
+  const { isDark } = useTheme();
+  const theme = isDark ? DarkColors : LightColors;
+
   return (
     <Tab.Navigator
       screenOptions={{
@@ -57,9 +64,15 @@ function MainTabs() {
         tabBarActiveTintColor:   ACTIVE_COLOR,
         tabBarInactiveTintColor: INACTIVE_COLOR,
         tabBarLabelStyle: { fontSize: 10, fontWeight: '600', marginBottom: 2 },
-        tabBarStyle: { paddingTop: 6 },
+        tabBarStyle: {
+          paddingTop: 6,
+          backgroundColor: theme.white,
+          borderTopColor: theme.borderColor,
+          borderTopWidth: 1,
+        },
       }}
     >
+      {/* ── HOME ── */}
       <Tab.Screen
         name="HomeTab"
         component={HomeStackNavigator}
@@ -74,20 +87,45 @@ function MainTabs() {
           ),
         }}
       />
+
+      {/* ── NOTIFICATIONS (badge) ── */}
       <Tab.Screen
-        name="Issues"
-        component={IssuesScreen}
+        name="Notifications"
+        component={NotificationsScreen}
         options={{
-          tabBarLabel: 'Issues',
+          tabBarLabel: 'Notifications',
           tabBarIcon: ({ focused, size }) => (
-            <Ionicons
-              name={focused ? 'warning' : 'warning-outline'}
-              size={size}
-              color={focused ? ACTIVE_COLOR : INACTIVE_COLOR}
-            />
+            <View style={{ position: 'relative' }}>
+              <Ionicons
+                name={focused ? 'notifications' : 'notifications-outline'}
+                size={size}
+                color={focused ? ACTIVE_COLOR : INACTIVE_COLOR}
+              />
+              {/* Badge */}
+              <View
+                style={{
+                  position: 'absolute',
+                  top: -4,
+                  right: -6,
+                  backgroundColor: '#EF4444',
+                  borderRadius: 8,
+                  minWidth: 16,
+                  height: 16,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  paddingHorizontal: 3,
+                }}
+              >
+                <Text style={{ color: '#FFFFFF', fontSize: 9, fontWeight: '700' }}>
+                  {NOTIFICATION_BADGE_COUNT}
+                </Text>
+              </View>
+            </View>
           ),
         }}
       />
+
+      {/* ── SYNC ── */}
       <Tab.Screen
         name="Sync"
         component={SyncScreen}
@@ -102,6 +140,8 @@ function MainTabs() {
           ),
         }}
       />
+
+      {/* ── PROFILE ── */}
       <Tab.Screen
         name="Profile"
         component={ProfileScreen}
@@ -124,8 +164,8 @@ function MainTabs() {
 export default function AppNavigator() {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
-      <Stack.Screen name="Login"     component={LoginScreen} />
-      <Stack.Screen name="MainTabs"  component={MainTabs} />
+      <Stack.Screen name="Login"    component={LoginScreen} />
+      <Stack.Screen name="MainTabs" component={MainTabs} />
     </Stack.Navigator>
   );
 }

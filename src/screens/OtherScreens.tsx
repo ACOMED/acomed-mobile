@@ -16,8 +16,8 @@ export function IssuesScreen({ navigation }: any) {
   const theme = isDark ? DarkColors : LightColors;
 
   function getSeverityStyle(severity: string) {
-    if (severity === 'high')   return { bg: Colors.red,         color: Colors.white, label: 'High' };
-    if (severity === 'medium') return { bg: Colors.orangeLight,  color: '#92400E',    label: 'Medium' };
+    if (severity === 'high') return { bg: Colors.red, color: Colors.white, label: 'High' };
+    if (severity === 'medium') return { bg: Colors.orangeLight, color: '#92400E', label: 'Medium' };
     return { bg: isDark ? '#1E293B' : Colors.grayLight, color: isDark ? '#94A3B8' : Colors.gray, label: 'Low' };
   }
 
@@ -110,7 +110,7 @@ export function ProfileScreen({ navigation }: any) {
           <View style={styles.avatarCircle}>
             <Ionicons name="person" size={38} color={Colors.teal} />
           </View>
-          <Text style={styles.profileName}>Amina Bennani</Text>
+          <Text style={styles.profileName}>Mohamed Ouazzag</Text>
           <Text style={styles.profileInspectorId}>Inspector ID: #44021</Text>
           <Text style={styles.profileRegion}>Region: Zone 4</Text>
         </View>
@@ -120,18 +120,18 @@ export function ProfileScreen({ navigation }: any) {
           {/* ── ACCOUNT INFORMATION ── */}
           <Text style={[styles.sectionLabel, { color: theme.text2 }]}>ACCOUNT INFORMATION</Text>
           <View style={[styles.infoCard, { backgroundColor: theme.cardBg, borderColor: theme.borderColor }]}>
-            <InfoRow icon="mail-outline"        label="Email"      value="a.bennani@sante.gov.ma" valueColor={Colors.teal}  theme={theme} />
-            <InfoRow icon="call-outline"        label="Phone"      value="+212 661-234-567"                                 theme={theme} />
-            <InfoRow icon="business-outline"    label="Department" value="Infrastructure & Safety"                          theme={theme} />
-            <InfoRow icon="person-outline"      label="Role"       value="Field Inspector" isLast                           theme={theme} />
+            <InfoRow icon="mail-outline" label="Email" value="m.ouazzag@sante.gov.ma" valueColor={Colors.teal} theme={theme} />
+            <InfoRow icon="call-outline" label="Phone" value="+212 661-234-567" theme={theme} />
+            <InfoRow icon="business-outline" label="Department" value="Infrastructure & Safety" theme={theme} />
+            <InfoRow icon="person-outline" label="Role" value="Field Inspector" isLast theme={theme} />
           </View>
 
           {/* ── DEVICE STATUS ── */}
           <Text style={[styles.sectionLabel, { color: theme.text2 }]}>DEVICE STATUS</Text>
           <View style={[styles.infoCard, { backgroundColor: theme.cardBg, borderColor: theme.borderColor }]}>
-            <InfoRow icon="sync-outline"        label="Last Sync"       value="Oct 24, 09:41 AM"                                              theme={theme} />
-            <InfoRow icon="clipboard-outline"   label="Pending Audits"  value="12 Pending" valueBg={Colors.orangeLight} valueColor="#92400E"  theme={theme} />
-            <InfoRow icon="save-outline"        label="Offline Data"    value="142.5 MB" isLast                                               theme={theme} />
+            <InfoRow icon="sync-outline" label="Last Sync" value="Oct 24, 09:41 AM" theme={theme} />
+            <InfoRow icon="clipboard-outline" label="Pending Audits" value="12 Pending" valueBg={Colors.orangeLight} valueColor="#92400E" theme={theme} />
+            <InfoRow icon="save-outline" label="Offline Data" value="142.5 MB" isLast theme={theme} />
           </View>
 
           {/* ── PREFERENCES ── */}
@@ -188,7 +188,7 @@ function InfoRow({ icon, label, value, isLast, valueColor, valueBg, theme }: any
           styles.infoRowValue,
           { color: theme.text },
           valueColor && { color: valueColor },
-          valueBg    && { fontWeight: '700', fontSize: 12 },
+          valueBg && { fontWeight: '700', fontSize: 12 },
         ]}>
           {value}
         </Text>

@@ -183,7 +183,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#FEE2E2', alignItems: 'center', justifyContent: 'center',
   },
   issuesTitle: { fontSize: 14, fontWeight: '700', color: Colors.red },
-  issuesSub: { fontSize: 12, color: '#EF4444' },
+  issuesSub:   { fontSize: 12, color: Colors.red },
   btnPrimary: {
     backgroundColor: Colors.green, borderRadius: 14,
     padding: 16, alignItems: 'center', marginBottom: 10,
