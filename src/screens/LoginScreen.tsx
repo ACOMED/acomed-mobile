@@ -12,6 +12,7 @@ import {
   Image,
 } from 'react-native';
 import { Colors } from '../theme/colors';
+import { login } from '../services/authService';
 
 // ─── LoginScreen ─────────────────────────────────────────────────────────────
 // Clean professional login — no emojis, ACOMED logo at top, green accents.
@@ -24,14 +25,23 @@ export default function LoginScreen({ navigation }: any) {
   const [idFocused, setIdFocused]         = useState(false);
   const [pwFocused, setPwFocused]         = useState(false);
   const [error, setError]                 = useState('');
+  const [loading, setLoading]             = useState(false);
 
-  function handleLogin() {
+  async function handleLogin() {
     if (!inspectorId || !password) {
       setError('Please enter your Inspector ID and password.');
       return;
     }
     setError('');
-    navigation.replace('MainTabs');
+    setLoading(true);
+    try {
+      await login(inspectorId, password);
+      navigation.replace('MainTabs');
+    } catch (err: any) {
+      setError(err.message || 'Login failed. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
@@ -109,8 +119,13 @@ export default function LoginScreen({ navigation }: any) {
             {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
             {/* Sign In Button */}
-            <TouchableOpacity style={styles.btnPrimary} onPress={handleLogin} activeOpacity={0.85}>
-              <Text style={styles.btnPrimaryText}>Sign In</Text>
+            <TouchableOpacity
+              style={[styles.btnPrimary, loading && { opacity: 0.6 }]}
+              onPress={handleLogin}
+              activeOpacity={0.85}
+              disabled={loading}
+            >
+              <Text style={styles.btnPrimaryText}>{loading ? 'Signing in…' : 'Sign In'}</Text>
             </TouchableOpacity>
 
             {/* Security note */}

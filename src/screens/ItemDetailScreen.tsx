@@ -147,7 +147,7 @@ export default function ItemDetailScreen({ route, navigation }: any) {
             try {
               console.log('[ItemDetail] Saving answer...');
               await saveAnswer(
-                route.params?.auditId || 'test-audit',
+                auditId,
                 question.id,
                 selectedResponse,
               );

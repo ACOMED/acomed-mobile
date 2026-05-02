@@ -8,6 +8,11 @@ import { Colors } from '../theme/colors';
 import { MOCK_ISSUES } from '../mocks/data';
 import { useTheme, DarkColors, LightColors } from '../theme/ThemeContext';
 
+import * as authService from '../services/authService';
+
+
+
+
 // ─────────────────────────────────────────────────────────────────────────────
 // IssuesScreen — dark-mode aware + Ionicons
 // ─────────────────────────────────────────────────────────────────────────────
@@ -87,10 +92,15 @@ export function IssuesScreen({ navigation }: any) {
 // ─────────────────────────────────────────────────────────────────────────────
 // ProfileScreen — dark-mode aware + Ionicons
 // ─────────────────────────────────────────────────────────────────────────────
+
 export function ProfileScreen({ navigation }: any) {
   const { isDark, toggleTheme } = useTheme();
   const theme = isDark ? DarkColors : LightColors;
+  const [user, setUser] = React.useState<any>(null);
 
+  React.useEffect(() => {
+    authService.getUser().then(setUser);
+  }, []);
   return (
     <SafeAreaView style={[styles.profileSafe, { backgroundColor: theme.background, paddingTop: Platform.OS === 'android' ? 35 : 0 }]}>
 
@@ -110,8 +120,8 @@ export function ProfileScreen({ navigation }: any) {
           <View style={styles.avatarCircle}>
             <Ionicons name="person" size={38} color={Colors.teal} />
           </View>
-          <Text style={styles.profileName}>Mohamed Ouazzag</Text>
-          <Text style={styles.profileInspectorId}>Inspector ID: #44021</Text>
+          <Text style={styles.profileName}>{user?.full_name || '—'}</Text>
+          <Text style={styles.profileInspectorId}>ID: {user?.id?.slice(0, 8) || '—'}</Text>
           <Text style={styles.profileRegion}>Region: Zone 4</Text>
         </View>
 
@@ -120,7 +130,7 @@ export function ProfileScreen({ navigation }: any) {
           {/* ── ACCOUNT INFORMATION ── */}
           <Text style={[styles.sectionLabel, { color: theme.text2 }]}>ACCOUNT INFORMATION</Text>
           <View style={[styles.infoCard, { backgroundColor: theme.cardBg, borderColor: theme.borderColor }]}>
-            <InfoRow icon="mail-outline" label="Email" value="m.ouazzag@sante.gov.ma" valueColor={Colors.teal} theme={theme} />
+            <InfoRow icon="mail-outline" label="Email" value={user?.email || '—'} valueColor={Colors.teal} theme={theme} />
             <InfoRow icon="call-outline" label="Phone" value="+212 661-234-567" theme={theme} />
             <InfoRow icon="business-outline" label="Department" value="Infrastructure & Safety" theme={theme} />
             <InfoRow icon="person-outline" label="Role" value="Field Inspector" isLast theme={theme} />
@@ -154,7 +164,10 @@ export function ProfileScreen({ navigation }: any) {
           {/* ── SIGN OUT ── */}
           <TouchableOpacity
             style={styles.signOutBtn}
-            onPress={() => navigation.replace('Login')}
+            onPress={async () => {
+  await authService.logout();
+  navigation.replace('Login');
+}}
           >
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
               <Ionicons name="log-out-outline" size={18} color={Colors.white} />

@@ -1,9 +1,10 @@
-import React from 'react';
-import { View, Text } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, ActivityIndicator } from 'react-native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme, DarkColors, LightColors } from '../theme/ThemeContext';
+import { isAuthenticated } from '../services/authService';
 
 // Import all screens
 import LoginScreen           from '../screens/LoginScreen';
@@ -162,8 +163,28 @@ function MainTabs() {
 
 // Root navigator — Login is separate, no tab bar
 export default function AppNavigator() {
+  const [initialScreen, setInitialScreen] = useState<'Login' | 'MainTabs' | null>(null);
+
+  useEffect(() => {
+    isAuthenticated().then((authed) => {
+      setInitialScreen(authed ? 'MainTabs' : 'Login');
+    });
+  }, []);
+
+  // Blank loading view while AsyncStorage token check runs
+  if (initialScreen === null) {
+    return (
+      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#FFFFFF' }}>
+        <ActivityIndicator size="large" color="#1A6B4A" />
+      </View>
+    );
+  }
+
   return (
-    <Stack.Navigator screenOptions={{ headerShown: false }}>
+    <Stack.Navigator
+      initialRouteName={initialScreen}
+      screenOptions={{ headerShown: false }}
+    >
       <Stack.Screen name="Login"    component={LoginScreen} />
       <Stack.Screen name="MainTabs" component={MainTabs} />
     </Stack.Navigator>
