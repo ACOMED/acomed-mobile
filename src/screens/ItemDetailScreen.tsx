@@ -7,7 +7,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../theme/colors';
 import { MOCK_QUESTIONS } from '../mocks/data';
 import { useTheme, DarkColors, LightColors } from '../theme/ThemeContext';
-import { saveAuditResponse } from '../services/storage';
+import { saveAnswer } from '../services/syncService';
 
 export default function ItemDetailScreen({ route, navigation }: any) {
   const { isDark } = useTheme();
@@ -145,17 +145,17 @@ export default function ItemDetailScreen({ route, navigation }: any) {
           onPress={async () => {
             if (!selectedResponse) return;
             try {
-              console.log('Attempting to save...');
-              await saveAuditResponse(
+              console.log('[ItemDetail] Saving answer...');
+              await saveAnswer(
                 route.params?.auditId || 'test-audit',
                 question.id,
-                selectedResponse
+                selectedResponse,
               );
-              console.log('Save successful');
+              console.log('[ItemDetail] Answer queued successfully');
               Alert.alert('Saved', 'Response saved locally');
               navigation.goBack();
             } catch (error) {
-              console.log('Save error:', error);
+              console.error('[ItemDetail] Save error:', error);
               Alert.alert('Error', 'Failed to save response');
             }
           }}
