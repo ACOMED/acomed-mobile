@@ -65,21 +65,29 @@ export async function login(email: string, password: string): Promise<LoginResul
 
   const body = await response.json();
 
-  if (!body.success || !body.data?.token || !body.data?.user) {
+  const token = body.token;
+  const user = body.user;
+
+  if (!body.success || !token || !user) {
     throw new Error('Unexpected response from server. Please contact support.');
   }
 
-  const { token, user }: { token: string; user: AuthUser } = body.data;
+  const normalizedUser: AuthUser = {
+    id: user.id,
+    tenant_id: user.tenant_id || '',
+    full_name: user.full_name || user.name || '',
+    email: user.email,
+    role: user.role,
+  };
 
   await Promise.all([
     AsyncStorage.setItem(TOKEN_KEY, token),
-    AsyncStorage.setItem(USER_KEY, JSON.stringify(user)),
+    AsyncStorage.setItem(USER_KEY, JSON.stringify(normalizedUser)),
   ]);
 
-  console.log('[authService] Login successful for', user.email);
-  return { success: true, user };
+  console.log('[authService] Login successful for', normalizedUser.email);
+  return { success: true, user: normalizedUser };
 }
-
 /**
  * Returns the stored JWT token, or null if no session exists.
  */
