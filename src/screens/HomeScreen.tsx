@@ -1,12 +1,14 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity, StyleSheet, Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import NetInfo from '@react-native-community/netinfo';
 import { Colors } from '../theme/colors';
-import { MOCK_USER, MOCK_AUDITS } from '../mocks/data';
+import { MOCK_AUDITS } from '../mocks/data';
 import { useTheme, DarkColors, LightColors } from '../theme/ThemeContext';
+import { getUser, AuthUser } from '../services/authService';
 
 const ASSIGNED_AUDITS = [
   { id: 'audit-004', hospitalType: 'Regional Hospital',  hospitalName: 'Hôpital Al Ghassani',       location: 'Fès, Maroc',   status: 'assigned' },
@@ -16,6 +18,24 @@ const ASSIGNED_AUDITS = [
 export default function HomeScreen({ navigation }: any) {
   const { isDark } = useTheme();
   const theme = isDark ? DarkColors : LightColors;
+
+  // ── Real user from AsyncStorage (same pattern as ProfileScreen) ──
+  const [user, setUser] = useState<AuthUser | null>(null);
+  useEffect(() => {
+    getUser().then(setUser);
+  }, []);
+
+  // ── Live network status via NetInfo ──
+  const [isConnected, setIsConnected] = useState<boolean | null>(null);
+  useEffect(() => {
+    // Get initial state
+    NetInfo.fetch().then((state) => setIsConnected(state.isConnected));
+    // Subscribe to changes
+    const unsubscribe = NetInfo.addEventListener((state) =>
+      setIsConnected(state.isConnected)
+    );
+    return unsubscribe;
+  }, []);
 
   function getStatusTag(status: string) {
     if (status === 'in_progress') return { bg: Colors.greenLight, color: Colors.greenDark, label: 'In Progress' };
@@ -34,8 +54,18 @@ export default function HomeScreen({ navigation }: any) {
           </View>
           <Text style={[styles.topBarTitle, { color: theme.text }]}>Dashboard</Text>
         </View>
-        <View style={[styles.offlineBadge, { backgroundColor: isDark ? '#1E293B' : Colors.grayLight, borderColor: theme.borderColor }]}>
-          <Text style={[styles.offlineText, { color: theme.text2 }]}>OFFLINE</Text>
+        <View style={[
+          styles.offlineBadge,
+          isConnected
+            ? { backgroundColor: Colors.greenLight, borderColor: '#A7F3D0' }
+            : { backgroundColor: isDark ? '#1E293B' : Colors.grayLight, borderColor: theme.borderColor },
+        ]}>
+          <Text style={[
+            styles.offlineText,
+            { color: isConnected ? Colors.greenDark : theme.text2 },
+          ]}>
+            {isConnected ? 'ONLINE' : 'OFFLINE'}
+          </Text>
         </View>
       </View>
 
@@ -45,8 +75,8 @@ export default function HomeScreen({ navigation }: any) {
         <View style={[styles.welcomeCard, { backgroundColor: theme.cardBg, borderColor: theme.borderColor }]}>
           <View style={{ flex: 1 }}>
             <Text style={[styles.welcomeSub, { color: theme.text2 }]}>Welcome back,</Text>
-            <Text style={[styles.welcomeName, { color: theme.text }]}>{MOCK_USER.name}</Text>
-            <Text style={styles.welcomeId}>Inspector ID: {MOCK_USER.inspectorId}</Text>
+            <Text style={[styles.welcomeName, { color: theme.text }]}>{user?.full_name || '—'}</Text>
+            <Text style={styles.welcomeId}>Inspector ID: {user?.id?.slice(0, 8) || '—'}</Text>
           </View>
           <View style={[styles.avatarWrap, { backgroundColor: isDark ? '#1E293B' : Colors.grayLight, borderColor: theme.borderColor }]}>
             <Ionicons name="person" size={22} color={Colors.green} />

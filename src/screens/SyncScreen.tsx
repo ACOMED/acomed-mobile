@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity, StyleSheet, Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import NetInfo from '@react-native-community/netinfo';
 import { Colors } from '../theme/colors';
 import { useTheme, DarkColors, LightColors } from '../theme/ThemeContext';
 
@@ -22,7 +23,18 @@ export default function SyncScreen() {
   const theme = isDark ? DarkColors : LightColors;
 
   const [syncState, setSyncState] = useState<SyncState>('idle');
-  const isOffline = true;
+
+  // ── Live network status via NetInfo ──
+  const [isConnected, setIsConnected] = useState<boolean | null>(null);
+  useEffect(() => {
+    NetInfo.fetch().then((state) => setIsConnected(state.isConnected));
+    const unsubscribe = NetInfo.addEventListener((state) =>
+      setIsConnected(state.isConnected)
+    );
+    return unsubscribe;
+  }, []);
+
+  const isOffline = !isConnected;
 
   function handleSyncNow() {
     if (syncState === 'syncing') return;
@@ -53,8 +65,18 @@ export default function SyncScreen() {
           </View>
           <Text style={[styles.topBarTitle, { color: theme.text }]}>Data Sync</Text>
         </View>
-        <View style={[styles.offlineBadge, { backgroundColor: isDark ? '#1E293B' : Colors.grayLight, borderColor: theme.borderColor }]}>
-          <Text style={[styles.offlineText, { color: theme.text2 }]}>OFFLINE</Text>
+        <View style={[
+          styles.offlineBadge,
+          isConnected
+            ? { backgroundColor: Colors.greenLight, borderColor: '#A7F3D0' }
+            : { backgroundColor: isDark ? '#1E293B' : Colors.grayLight, borderColor: theme.borderColor },
+        ]}>
+          <Text style={[
+            styles.offlineText,
+            { color: isConnected ? Colors.greenDark : theme.text2 },
+          ]}>
+            {isConnected ? 'ONLINE' : 'OFFLINE'}
+          </Text>
         </View>
       </View>
 
