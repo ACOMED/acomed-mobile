@@ -34,8 +34,6 @@ import NotificationsScreen   from '../screens/NotificationsScreen';
 const ACTIVE_COLOR   = '#1A6B4A';
 const INACTIVE_COLOR = '#6B7280';
 
-const NOTIFICATION_BADGE_COUNT = 3;
-
 const Stack     = createNativeStackNavigator();
 const Tab       = createBottomTabNavigator();
 const HomeStack = createNativeStackNavigator();
@@ -56,6 +54,9 @@ function HomeStackNavigator() {
 function MainTabs() {
   const { isDark } = useTheme();
   const theme = isDark ? DarkColors : LightColors;
+
+  // Live badge count — updated by NotificationsScreen via onUnreadChange
+  const [unreadCount, setUnreadCount] = useState(0);
 
   return (
     <Tab.Navigator
@@ -90,41 +91,44 @@ function MainTabs() {
       />
 
       {/* ── NOTIFICATIONS (badge) ── */}
-      <Tab.Screen
-        name="Notifications"
-        component={NotificationsScreen}
-        options={{
-          tabBarLabel: 'Notifications',
-          tabBarIcon: ({ focused, size }) => (
-            <View style={{ position: 'relative' }}>
-              <Ionicons
-                name={focused ? 'notifications' : 'notifications-outline'}
-                size={size}
-                color={focused ? ACTIVE_COLOR : INACTIVE_COLOR}
-              />
-              {/* Badge */}
-              <View
-                style={{
-                  position: 'absolute',
-                  top: -4,
-                  right: -6,
-                  backgroundColor: '#EF4444',
-                  borderRadius: 8,
-                  minWidth: 16,
-                  height: 16,
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  paddingHorizontal: 3,
-                }}
-              >
-                <Text style={{ color: '#FFFFFF', fontSize: 9, fontWeight: '700' }}>
-                  {NOTIFICATION_BADGE_COUNT}
-                </Text>
-              </View>
-            </View>
-          ),
-        }}
-      />
+<Tab.Screen
+  name="Notifications"
+  component={({ navigation }) => (
+  <NotificationsScreen navigation={navigation} onUnreadChange={setUnreadCount} />
+)}
+  options={{
+    tabBarLabel: 'Notifications',
+    tabBarIcon: ({ focused, size }) => (
+      <View style={{ position: 'relative' }}>
+        <Ionicons
+          name={focused ? 'notifications' : 'notifications-outline'}
+          size={size}
+          color={focused ? ACTIVE_COLOR : INACTIVE_COLOR}
+        />
+        {unreadCount > 0 && (
+          <View
+            style={{
+              position: 'absolute',
+              top: -4,
+              right: -6,
+              backgroundColor: '#EF4444',
+              borderRadius: 8,
+              minWidth: 16,
+              height: 16,
+              alignItems: 'center',
+              justifyContent: 'center',
+              paddingHorizontal: 3,
+            }}
+          >
+            <Text style={{ color: '#FFFFFF', fontSize: 9, fontWeight: '700' }}>
+              {unreadCount}
+            </Text>
+          </View>
+        )}
+      </View>
+    ),
+  }}
+/>
 
       {/* ── SYNC ── */}
       <Tab.Screen

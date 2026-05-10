@@ -1,45 +1,49 @@
 import React, { useState, useEffect } from 'react';
 import {
-  View, Text, ScrollView, TouchableOpacity, StyleSheet, Platform,
+  View, Text, ScrollView, TouchableOpacity, StyleSheet,
+  Platform, ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import NetInfo from '@react-native-community/netinfo';
 import { Colors } from '../theme/colors';
-import { MOCK_AUDITS } from '../mocks/data';
 import { useTheme, DarkColors, LightColors } from '../theme/ThemeContext';
 import { getUser, AuthUser } from '../services/authService';
+import { fetchAudits, Audit } from '../services/auditService';
 
-const ASSIGNED_AUDITS = [
-  { id: 'audit-004', hospitalType: 'Regional Hospital',  hospitalName: 'Hôpital Al Ghassani',       location: 'Fès, Maroc',   status: 'assigned' },
-  { id: 'audit-005', hospitalType: 'Public Clinic',      hospitalName: 'Centre de Santé Hay Nahda', location: 'Rabat, Maroc', status: 'assigned' },
-];
+function formatDate(iso: string): string {
+  return new Date(iso).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+}
 
 export default function HomeScreen({ navigation }: any) {
   const { isDark } = useTheme();
   const theme = isDark ? DarkColors : LightColors;
 
-  // ── Real user from AsyncStorage (same pattern as ProfileScreen) ──
   const [user, setUser] = useState<AuthUser | null>(null);
-  useEffect(() => {
-    getUser().then(setUser);
-  }, []);
+  useEffect(() => { getUser().then(setUser); }, []);
 
-  // ── Live network status via NetInfo ──
   const [isConnected, setIsConnected] = useState<boolean | null>(null);
   useEffect(() => {
-    // Get initial state
     NetInfo.fetch().then((state) => setIsConnected(state.isConnected));
-    // Subscribe to changes
-    const unsubscribe = NetInfo.addEventListener((state) =>
-      setIsConnected(state.isConnected)
-    );
+    const unsubscribe = NetInfo.addEventListener((state) => setIsConnected(state.isConnected));
     return unsubscribe;
+  }, []);
+
+  const [audits, setAudits] = useState<Audit[]>([]);
+  const [loadingAudits, setLoadingAudits] = useState(true);
+  const [fetchError, setFetchError] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetchAudits()
+      .then(setAudits)
+      .catch((err) => setFetchError(err.message ?? 'Failed to load audits.'))
+      .finally(() => setLoadingAudits(false));
   }, []);
 
   function getStatusTag(status: string) {
     if (status === 'in_progress') return { bg: Colors.greenLight, color: Colors.greenDark, label: 'In Progress' };
     if (status === 'completed')   return { bg: '#D1FAE5',         color: '#065F46',        label: 'Completed'   };
+    if (status === 'assigned')    return { bg: isDark ? '#1E293B' : Colors.grayLight, color: isDark ? '#94A3B8' : Colors.gray, label: 'Assigned' };
     return { bg: isDark ? '#1E293B' : Colors.grayLight, color: isDark ? '#94A3B8' : Colors.gray, label: 'Pending' };
   }
 
@@ -60,10 +64,7 @@ export default function HomeScreen({ navigation }: any) {
             ? { backgroundColor: Colors.greenLight, borderColor: '#A7F3D0' }
             : { backgroundColor: isDark ? '#1E293B' : Colors.grayLight, borderColor: theme.borderColor },
         ]}>
-          <Text style={[
-            styles.offlineText,
-            { color: isConnected ? Colors.greenDark : theme.text2 },
-          ]}>
+          <Text style={[styles.offlineText, { color: isConnected ? Colors.greenDark : theme.text2 }]}>
             {isConnected ? 'ONLINE' : 'OFFLINE'}
           </Text>
         </View>
@@ -87,7 +88,7 @@ export default function HomeScreen({ navigation }: any) {
         {/* ── METRICS ROW ── */}
         <View style={[styles.metricsCard, { backgroundColor: theme.cardBg, borderColor: theme.borderColor }]}>
           <View style={[styles.metricItem, { backgroundColor: isDark ? '#1E293B' : Colors.grayLight }]}>
-            <Text style={[styles.metricVal, { color: theme.text }]}>12</Text>
+            <Text style={[styles.metricVal, { color: theme.text }]}>{audits.length}</Text>
             <Text style={[styles.metricLbl, { color: theme.text2 }]}>ASSIGNED</Text>
           </View>
           <View style={[styles.metricItem, { backgroundColor: '#FEF2F2' }]}>
@@ -100,96 +101,48 @@ export default function HomeScreen({ navigation }: any) {
           </View>
         </View>
 
-        {/* ── ACTIVE AUDITS ── */}
+        {/* ── AUDIT LIST ── */}
         <View style={styles.listHeader}>
           <Text style={[styles.listTitle, { color: theme.text }]}>Active Audits</Text>
-          <TouchableOpacity>
-            <Text style={styles.viewAll}>View All</Text>
-          </TouchableOpacity>
         </View>
 
-        {MOCK_AUDITS.map((audit) => {
-          const tag = getStatusTag(audit.status);
-          return (
-            <TouchableOpacity
-              key={audit.id}
-              style={[styles.auditCard, { backgroundColor: theme.cardBg, borderColor: theme.borderColor }]}
-              onPress={() => navigation.navigate('AuditDetail', { auditId: audit.id })}
-            >
-              <View style={styles.auditCardHeader}>
-                <View style={{ flex: 1 }}>
-                  <Text style={[styles.auditType, { color: theme.text2 }]}>{audit.hospitalType}</Text>
-                  <Text style={[styles.auditName, { color: theme.text }]}>{audit.hospitalName}</Text>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 }}>
-                    <Ionicons name="location-outline" size={12} color={theme.text2} />
-                    <Text style={[styles.auditLocation, { color: theme.text2 }]}>{audit.location}</Text>
+        {loadingAudits ? (
+          <ActivityIndicator size="large" color={Colors.green} style={{ marginTop: 32 }} />
+        ) : fetchError ? (
+          <View style={[styles.errorBox, { backgroundColor: isDark ? '#1E293B' : '#FEF2F2', borderColor: '#FECACA' }]}>
+            <Ionicons name="alert-circle-outline" size={18} color={Colors.red} />
+            <Text style={[styles.errorText, { color: Colors.red }]}>{fetchError}</Text>
+          </View>
+        ) : audits.length === 0 ? (
+          <Text style={[styles.emptyText, { color: theme.text2 }]}>No audits assigned.</Text>
+        ) : (
+          audits.map((audit) => {
+            const tag = getStatusTag(audit.status);
+            return (
+              <TouchableOpacity
+                key={audit.id}
+                style={[styles.auditCard, { backgroundColor: theme.cardBg, borderColor: theme.borderColor }]}
+                onPress={() => navigation.navigate('AuditDetail', { auditId: audit.id })}
+              >
+                <View style={styles.auditCardHeader}>
+                  <View style={[styles.refBadge, { backgroundColor: Colors.greenLight }]}>
+                    <Text style={styles.refText}>{audit.ref}</Text>
+                  </View>
+                  <View style={[styles.tag, { backgroundColor: tag.bg }]}>
+                    <Text style={[styles.tagText, { color: tag.color }]}>{tag.label}</Text>
                   </View>
                 </View>
-                <View style={[styles.tag, { backgroundColor: tag.bg }]}>
-                  <Text style={[styles.tagText, { color: tag.color }]}>{tag.label}</Text>
+                <Text style={[styles.auditName, { color: theme.text }]} numberOfLines={2}>{audit.facility}</Text>
+                <View style={styles.auditFooter}>
+                  <Text style={[styles.footerText, { color: theme.text2 }]}>{formatDate(audit.date)}</Text>
+                  <Text style={styles.footerLink}>
+                    {audit.status === 'completed' ? 'View Report ›' : audit.status === 'in_progress' ? 'Continue ›' : 'Start ›'}
+                  </Text>
                 </View>
-              </View>
-
-              {/* Progress bar */}
-              <View style={[styles.progressWrap, { backgroundColor: theme.borderColor }]}>
-                <View style={[styles.progressFill, { width: `${audit.progress}%` as any }]} />
-              </View>
-
-              {/* Footer */}
-              <View style={styles.auditFooter}>
-                <Text style={[styles.footerText, { color: theme.text2 }]}>
-                  {audit.lastSync ? `Last sync: ${audit.lastSync}` : 'Audit Progress'}
-                </Text>
-                <Text style={styles.footerLink}>
-                  {audit.status === 'completed' ? 'View Report ›' : audit.status === 'in_progress' ? 'Continue ›' : `${audit.progress}%`}
-                </Text>
-              </View>
-            </TouchableOpacity>
-          );
-        })}
-
-        {/* ── ASSIGNED — NOT STARTED ── */}
-        <View style={[styles.listHeader, { marginTop: 8 }]}>
-          <Text style={[styles.listTitle, { color: theme.text }]}>Assigned — Not Started</Text>
-          <View style={[styles.countBadge, { backgroundColor: isDark ? '#1E293B' : Colors.grayLight, borderColor: theme.borderColor }]}>
-            <Text style={[styles.countBadgeText, { color: theme.text2 }]}>{ASSIGNED_AUDITS.length}</Text>
-          </View>
-        </View>
-
-        {ASSIGNED_AUDITS.map((audit) => (
-          <View
-            key={audit.id}
-            style={[styles.auditCard, { backgroundColor: theme.cardBg, borderColor: theme.borderColor }]}
-          >
-            <View style={styles.auditCardHeader}>
-              <View style={{ flex: 1 }}>
-                <Text style={[styles.auditType, { color: theme.text2 }]}>{audit.hospitalType}</Text>
-                <Text style={[styles.auditName, { color: theme.text }]}>{audit.hospitalName}</Text>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 }}>
-                  <Ionicons name="location-outline" size={12} color={theme.text2} />
-                  <Text style={[styles.auditLocation, { color: theme.text2 }]}>{audit.location}</Text>
-                </View>
-              </View>
-              {/* Gray "Assigned" tag */}
-              <View style={[styles.tag, { backgroundColor: isDark ? '#1E293B' : Colors.grayLight }]}>
-                <Text style={[styles.tagText, { color: isDark ? '#94A3B8' : Colors.gray }]}>Assigned</Text>
-              </View>
-            </View>
-
-            {/* Divider */}
-            <View style={[styles.divider, { backgroundColor: theme.borderColor }]} />
-
-            {/* Start Audit button */}
-            <TouchableOpacity
-              style={styles.startAuditBtn}
-              activeOpacity={0.8}
-              onPress={() => navigation.navigate('AuditDetail', { auditId: audit.id })}
-            >
-              <Ionicons name="play-circle-outline" size={15} color={Colors.white} />
-              <Text style={styles.startAuditText}>Start Audit</Text>
-            </TouchableOpacity>
-          </View>
-        ))}
+              </TouchableOpacity>
+            );
+          })
+        )}
 
         <Text style={[styles.tagline, { color: theme.text2 }]}>"Ensuring healthcare excellence across Morocco."</Text>
         <View style={{ height: 100 }} />
@@ -255,34 +208,26 @@ const styles = StyleSheet.create({
     alignItems: 'center', marginBottom: 10,
   },
   listTitle: { fontSize: 15, fontWeight: '700' },
-  viewAll: { fontSize: 13, color: Colors.green, fontWeight: '600' },
-  countBadge: {
-    borderWidth: 1, borderRadius: 99,
-    paddingHorizontal: 8, paddingVertical: 2,
-  },
-  countBadgeText: { fontSize: 11, fontWeight: '700' },
   auditCard: {
     borderRadius: 16, borderWidth: 1,
     padding: 16, marginBottom: 12,
   },
-  auditCardHeader: { flexDirection: 'row', alignItems: 'flex-start', gap: 8, marginBottom: 10 },
-  auditType: { fontSize: 11, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.5 },
-  auditName: { fontSize: 16, fontWeight: '700', lineHeight: 20 },
-  auditLocation: { fontSize: 12 },
+  auditCardHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 },
+  refBadge: {
+    borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3,
+  },
+  refText: { fontSize: 11, fontWeight: '700', color: Colors.green, letterSpacing: 0.5 },
   tag: { borderRadius: 99, paddingHorizontal: 10, paddingVertical: 3 },
   tagText: { fontSize: 12, fontWeight: '600' },
-  progressWrap: { height: 8, borderRadius: 99, overflow: 'hidden' },
-  progressFill: { height: '100%', backgroundColor: Colors.green, borderRadius: 99 },
-  auditFooter: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 10 },
+  auditName: { fontSize: 15, fontWeight: '700', lineHeight: 20, marginBottom: 10 },
+  auditFooter: { flexDirection: 'row', justifyContent: 'space-between' },
   footerText: { fontSize: 12 },
   footerLink: { fontSize: 12, color: Colors.green, fontWeight: '600' },
-  divider: { height: 1, marginVertical: 12 },
-  startAuditBtn: {
-    flexDirection: 'row', alignItems: 'center', gap: 6,
-    backgroundColor: Colors.green, borderRadius: 99,
-    paddingHorizontal: 14, paddingVertical: 8,
-    alignSelf: 'flex-start',
+  errorBox: {
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    borderWidth: 1, borderRadius: 12, padding: 14, marginBottom: 12,
   },
-  startAuditText: { color: Colors.white, fontSize: 13, fontWeight: '600' },
+  errorText: { fontSize: 13, flex: 1 },
+  emptyText: { textAlign: 'center', fontSize: 14, marginTop: 32 },
   tagline: { textAlign: 'center', fontSize: 13, fontStyle: 'italic', marginTop: 8, paddingBottom: 8 },
 });
