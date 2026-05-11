@@ -7,22 +7,27 @@ import { Ionicons } from '@expo/vector-icons';
 import NetInfo from '@react-native-community/netinfo';
 import { Colors } from '../theme/colors';
 import { useTheme, DarkColors, LightColors } from '../theme/ThemeContext';
+import { getPendingCount, getQueue } from '../services/syncService';
 
 type SyncState = 'idle' | 'syncing' | 'done';
-
-// Queue icon names as Ionicons instead of emoji
-const PENDING_QUEUE = [
-  { id: '1', iconName: 'clipboard-outline' as const, title: 'Section B — Sterilisation & Infection Control', auditName: 'Hôpital Régional Al Farabi',       timestamp: 'Today, 09:14 AM' },
-  { id: '2', iconName: 'document-text-outline' as const, title: 'Section E — Fire Safety & Emergency Exits',      auditName: 'Clinique Avicenne',             timestamp: 'Today, 08:57 AM' },
-  { id: '3', iconName: 'camera-outline' as const, title: 'Photo evidence — Ward 3 ceiling damage',        auditName: 'Centre de Santé Hay Hassani',  timestamp: 'Yesterday, 16:30 PM' },
-  { id: '4', iconName: 'warning-outline' as const, title: 'Non-conformity report — Waste disposal',        auditName: 'Hôpital Ibn Rochd',            timestamp: 'Yesterday, 14:05 PM' },
-];
 
 export default function SyncScreen() {
   const { isDark } = useTheme();
   const theme = isDark ? DarkColors : LightColors;
 
   const [syncState, setSyncState] = useState<SyncState>('idle');
+  const [pendingCount, setPendingCount] = useState(0);
+  const [queue, setQueue] = useState<any[]>([]);
+
+  useEffect(() => {
+    async function loadQueue() {
+      const count = await getPendingCount();
+      const items = await getQueue();
+      setPendingCount(count);
+      setQueue(items);
+    }
+    loadQueue();
+  }, []);
 
   // ── Live network status via NetInfo ──
   const [isConnected, setIsConnected] = useState<boolean | null>(null);
@@ -100,7 +105,7 @@ export default function SyncScreen() {
         <View style={styles.metricsRow}>
           <View style={[styles.metricCard, { backgroundColor: Colors.orangeLight, borderColor: '#FDE68A' }]}>
             <Ionicons name="time-outline" size={22} color={Colors.orange} />
-            <Text style={[styles.metricVal, { color: Colors.orange }]}>4</Text>
+            <Text style={[styles.metricVal, { color: Colors.orange }]}>{pendingCount}</Text>
             <Text style={[styles.metricLbl, { color: theme.text2 }]}>PENDING</Text>
           </View>
           <View style={[styles.metricCard, { backgroundColor: theme.cardBg, borderColor: theme.borderColor }]}>
@@ -136,25 +141,21 @@ export default function SyncScreen() {
         <View style={styles.sectionHeader}>
           <Text style={[styles.sectionTitle, { color: theme.text }]}>Pending Queue</Text>
           <View style={styles.countBadge}>
-            <Text style={styles.countBadgeText}>{PENDING_QUEUE.length} items</Text>
+            <Text style={styles.countBadgeText}>{pendingCount} items</Text>
           </View>
         </View>
 
-        {PENDING_QUEUE.map((item) => (
-          <View key={item.id} style={[styles.queueCard, { backgroundColor: theme.cardBg, borderColor: theme.borderColor }]}>
+        {queue.map((item) => (
+          <View key={item.auditId + item.questionId} style={[styles.queueCard, { backgroundColor: theme.cardBg, borderColor: theme.borderColor }]}>
             <View style={[styles.queueIconWrap, { backgroundColor: isDark ? '#1E293B' : Colors.grayLight, borderColor: theme.borderColor }]}>
-              <Ionicons name={item.iconName} size={20} color={Colors.green} />
+              <Ionicons name="clipboard-outline" size={20} color={Colors.green} />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={[styles.queueTitle, { color: theme.text }]} numberOfLines={2}>{item.title}</Text>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 2 }}>
-                <Ionicons name="location-outline" size={11} color={theme.text2} />
-                <Text style={[styles.queueAudit, { color: theme.text2 }]}>{item.auditName}</Text>
-              </View>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                <Ionicons name="time-outline" size={11} color={theme.text3} />
-                <Text style={[styles.queueTime, { color: theme.text3 }]}>{item.timestamp}</Text>
-              </View>
+              <Text style={[styles.queueTitle, { color: theme.text }]} numberOfLines={2}>
+                Question: {item.questionId}
+              </Text>
+              <Text style={[styles.queueAudit, { color: theme.text2 }]}>Audit: {item.auditId}</Text>
+              <Text style={[styles.queueTime, { color: theme.text3 }]}>{item.updatedAt}</Text>
             </View>
             <View style={styles.queueBadge}>
               <Text style={styles.queueBadgeText}>PENDING</Text>

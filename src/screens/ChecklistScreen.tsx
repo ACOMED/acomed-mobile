@@ -10,7 +10,7 @@ import { useTheme, DarkColors, LightColors } from '../theme/ThemeContext';
 import { fetchAudit, fetchTemplate, Question } from '../services/auditService';
 import { saveAnswer } from '../services/syncService';
 
-const TEMPLATE_ID = 'e3226ae3-29a9-470c-b052-d3d91fc6609a';
+const FALLBACK_TEMPLATE_ID = 'e3226ae3-29a9-470c-b052-d3d91fc6609a';
 
 export default function ChecklistScreen({ route, navigation }: any) {
   const { isDark } = useTheme();
@@ -27,26 +27,35 @@ export default function ChecklistScreen({ route, navigation }: any) {
     async function load() {
       setLoading(true);
       setError(null);
-      const [auditResult, templateResult] = await Promise.allSettled([
-        fetchAudit(auditId),
-        fetchTemplate(TEMPLATE_ID),
-      ]);
 
-      if (templateResult.status === 'rejected') {
+      let audit;
+      try {
+        audit = await fetchAudit(auditId);
+      } catch (e) {
+        setError('Failed to load audit. Please try again.');
+        setLoading(false);
+        return;
+      }
+
+      console.log('[DEBUG] audit object:', JSON.stringify(audit));
+
+      const initial: Record<string, string> = {};
+      audit.responses?.forEach((a: any) => { initial[a.question_id] = a.answer_value; });
+      setResponses(initial);
+
+      try {
+        const templateId = audit.template_id ?? FALLBACK_TEMPLATE_ID;
+        const template = await fetchTemplate(templateId);
+        console.log('[DEBUG] template questions count:', template.schema.questions.length);
+        console.log('[DEBUG] questions:', JSON.stringify(template.schema.questions));
+        setQuestions(template.schema.questions);
+      } catch (e) {
         setError('Failed to load checklist questions. Please try again.');
         setLoading(false);
         return;
       }
 
-      setQuestions(templateResult.value.schema.questions);
-
-      if (auditResult.status === 'fulfilled') {
-        const initial: Record<string, string> = {};
-        auditResult.value.answers?.forEach((a) => { initial[a.question_id] = a.response_value; });
-        setResponses(initial);
-      } else {
-        console.warn('[ChecklistScreen] fetchAudit failed, starting with empty responses:', auditResult.reason);
-      }
+      console.log('[DEBUG] template_id value:', audit.template_id);
 
       setLoading(false);
     }

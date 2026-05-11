@@ -118,10 +118,6 @@ export async function getPendingCount(): Promise<number> {
   return queue.filter((e) => !e.synced).length;
 }
 
-/**
- * Placeholder sync function — logs pending entries without making any network
- * requests. Replace the body with a real API call when the backend is ready.
- */
 export async function sync(): Promise<void> {
   const queue = await readQueue();
   const pending = queue.filter((e) => !e.synced);
@@ -131,18 +127,42 @@ export async function sync(): Promise<void> {
     return;
   }
 
-  console.log(`[syncService] sync() — ${pending.length} pending item(s):`);
-  pending.forEach((e) => {
-    console.log(
-      `  • [${e.auditId}] question="${e.questionId}" value="${e.value}" updated_at="${e.updated_at}"`,
-    );
-  });
+  const token = await AsyncStorage.getItem('acomed_token');
+  if (!token) {
+    console.warn('[syncService] sync() — no auth token, skipping.');
+    return;
+  }
 
-  // TODO: POST pending entries to the backend, then mark them as synced:
-  //
-  //   await api.uploadAnswers(pending);
-  //   const updated = queue.map(e =>
-  //     pending.some(p => p._key === e._key) ? { ...e, synced: true } : e
-  //   );
-  //   await writeQueue(updated);
+  const answers = pending.map((e) => ({
+    id: e._key,
+    audit_id: e.auditId,
+    question_id: e.questionId,
+    response_value: e.value,
+    created_at: e.updated_at,
+    updated_at: e.updated_at,
+  }));
+
+  try {
+    const response = await fetch('https://api.acomed.tech/api/sync', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ audits: [], answers, capas: [] }),
+    });
+
+    if (!response.ok) {
+      console.error('[syncService] sync() — server error:', response.status);
+      return;
+    }
+
+    const updated = queue.map((e) =>
+      pending.some((p) => p._key === e._key) ? { ...e, synced: true } : e
+    );
+    await writeQueue(updated);
+    console.log(`[syncService] sync() — ${pending.length} item(s) synced successfully.`);
+  } catch (err) {
+    console.error('[syncService] sync() — network error:', err);
+  }
 }

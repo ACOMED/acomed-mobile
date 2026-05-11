@@ -20,11 +20,23 @@ export interface Answer {
   updated_at: string;
 }
 
+export interface AuditResponse {
+  id: string;
+  question_id: string;
+  question_text: string;
+  answer_value: string;
+  evidence_url: string | null;
+}
+
 export interface AuditDetail extends Audit {
+  code: string;
   facility_name: string;
+  inspector_name: string;
+  template_id: string | null;
   compliance_score: number | null;
   maturity_score: number | null;
   answers: Answer[];
+  responses: AuditResponse[];
 }
 
 export interface Question {

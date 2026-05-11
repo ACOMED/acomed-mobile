@@ -34,6 +34,7 @@ export default function AuditDetailScreen({ route, navigation }: any) {
     if (status === 'in_progress') return { bg: Colors.greenLight, color: Colors.greenDark, label: 'In Progress' };
     if (status === 'completed')   return { bg: '#D1FAE5',         color: '#065F46',        label: 'Completed'   };
     if (status === 'assigned')    return { bg: isDark ? '#1E293B' : Colors.grayLight, color: isDark ? '#94A3B8' : Colors.gray, label: 'Assigned' };
+    if (status === 'brouillon')   return { bg: isDark ? '#1E293B' : Colors.grayLight, color: isDark ? '#94A3B8' : Colors.gray, label: 'Brouillon' };
     return { bg: isDark ? '#1E293B' : Colors.grayLight, color: isDark ? '#94A3B8' : Colors.gray, label: 'Pending' };
   }
 
@@ -71,7 +72,7 @@ export default function AuditDetailScreen({ route, navigation }: any) {
               </View>
               <View style={{ flex: 1 }}>
                 <View style={[styles.refTag, { backgroundColor: Colors.greenLight }]}>
-                  <Text style={styles.refTagText}>{audit.ref}</Text>
+                  <Text style={styles.refTagText}>{audit.code}</Text>
                 </View>
                 <Text style={[styles.facilityName, { color: theme.text }]}>{audit.facility_name || audit.facility}</Text>
                 {(() => { const tag = getStatusTag(audit.status); return (
@@ -101,12 +102,12 @@ export default function AuditDetailScreen({ route, navigation }: any) {
               </View>
               <View>
                 <Text style={[styles.inspectorLabel, { color: theme.text3 }]}>ASSIGNED INSPECTOR</Text>
-                <Text style={[styles.inspectorName, { color: theme.text }]}>{audit.inspector || '—'}</Text>
+                <Text style={[styles.inspectorName, { color: theme.text }]}>{audit.inspector_name || '—'}</Text>
               </View>
             </View>
             <View style={[styles.dateRow, { borderTopColor: theme.borderColor }]}>
               <Ionicons name="calendar-outline" size={14} color={theme.text3} />
-              <Text style={[styles.dateText, { color: theme.text2 }]}>{audit.date}</Text>
+              <Text style={[styles.dateText, { color: theme.text2 }]}>{audit.date ?? '—'}</Text>
             </View>
           </View>
 

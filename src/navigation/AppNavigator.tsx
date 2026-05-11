@@ -3,8 +3,10 @@ import { View, Text, ActivityIndicator } from 'react-native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
+import NetInfo from '@react-native-community/netinfo';
 import { useTheme, DarkColors, LightColors } from '../theme/ThemeContext';
 import { isAuthenticated } from '../services/authService';
+import { sync } from '../services/syncService';
 
 // Import all screens
 import LoginScreen           from '../screens/LoginScreen';
@@ -173,6 +175,19 @@ export default function AppNavigator() {
     isAuthenticated().then((authed) => {
       setInitialScreen(authed ? 'MainTabs' : 'Login');
     });
+  }, []);
+
+  useEffect(() => {
+    let wasOffline = false;
+    const unsubscribe = NetInfo.addEventListener((state) => {
+      const online = !!state.isConnected;
+      if (wasOffline && online) {
+        console.log('[AppNavigator] Reconnected — triggering sync');
+        sync();
+      }
+      wasOffline = !online;
+    });
+    return unsubscribe;
   }, []);
 
   // Blank loading view while AsyncStorage token check runs
