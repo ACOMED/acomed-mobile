@@ -39,6 +39,8 @@ export interface AuditDetail extends Audit {
   responses: AuditResponse[];
 }
 
+// ── Flat schema ───────────────────────────────────────────────────────────────
+
 export interface Question {
   question_id: string;
   type: string;
@@ -52,13 +54,53 @@ export interface Question {
   prerequisite_condition: 'EQUALS_YES' | 'EQUALS_NO' | null;
 }
 
+export interface FlatTemplateSchema {
+  questions: Question[];
+}
+
+// ── Graph schema ──────────────────────────────────────────────────────────────
+
+export interface GraphNode {
+  id: string;
+  type: string;
+  label: string;
+}
+
+export interface GraphEdge {
+  id: string;
+  sourceNodeId: string;
+  sourceHandle: 'out' | 'yes' | 'no';
+  targetNodeId: string;
+  targetHandle?: string;
+}
+
+export interface GraphTemplateSchema {
+  nodes: GraphNode[];
+  edges: GraphEdge[];
+}
+
+export type TemplateSchema = FlatTemplateSchema | GraphTemplateSchema;
+
+export function isGraphSchema(schema: TemplateSchema): schema is GraphTemplateSchema {
+  return Array.isArray((schema as GraphTemplateSchema).nodes) &&
+         Array.isArray((schema as GraphTemplateSchema).edges);
+}
+
+export function isFlatSchema(schema: TemplateSchema): schema is FlatTemplateSchema {
+  return !isGraphSchema(schema);
+}
+
+// ── Template ──────────────────────────────────────────────────────────────────
+
 export interface Template {
   id: string;
   name: string;
   code: string;
-  schema: { questions: Question[] };
+  schema: TemplateSchema;
   created_at: string;
 }
+
+// ── Network ───────────────────────────────────────────────────────────────────
 
 async function authedFetch(path: string): Promise<Response> {
   const token = await authService.getToken();

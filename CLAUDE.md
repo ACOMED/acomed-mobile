@@ -159,3 +159,23 @@ src/
 ## Known Issues
 - Audit cards show same data because backend has same test data for all audits
 - TEMPLATE_ID fallback hardcoded in ChecklistScreen — waiting for backend to add template_id to GET /api/audits/:id response
+
+
+## Template Schema Reality
+
+Templates exist in TWO shapes in the backend:
+
+### Flat shape (legacy, used by current ChecklistScreen)
+schema.questions[] = array of question objects.
+
+### Graph shape (real source of truth, used by dashboard builder)
+schema.nodes[] + schema.edges[]
+- nodes: { id, type, label, x, y, color }
+- edges: { id, sourceNodeId, sourceHandle, targetNodeId, targetHandle }
+- sourceHandle values: "out" (unconditional), "yes", "no"
+- Root node = the node with no incoming edges
+- Traversal: render node → on answer, follow edge where sourceNodeId=current and sourceHandle matches answer → go to targetNodeId
+
+Node types seen so far: "text", "boolean", "booleanNode", "camera", "signature"
+
+The mobile app must support BOTH shapes — detect which one and render accordingly.
