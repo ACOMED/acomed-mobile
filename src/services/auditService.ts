@@ -1,3 +1,4 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as authService from './authService';
 
 const BASE_URL = 'https://api.acomed.tech';
@@ -123,19 +124,54 @@ async function authedFetch(path: string): Promise<Response> {
 }
 
 export async function fetchAudits(): Promise<Audit[]> {
-  const response = await authedFetch('/api/audits');
-  const body = await response.json();
-  return (body.data ?? body) as Audit[];
+  try {
+    const data = await authedFetch('/api/audits')
+      .then(r => r.json())
+      .then(b => (b.data ?? b) as Audit[]);
+    await AsyncStorage.setItem('cache_audits', JSON.stringify(data));
+    return data;
+  } catch (err) {
+    const cached = await AsyncStorage.getItem('cache_audits');
+    if (cached) {
+      console.log('[auditService] Offline — serving audits from cache');
+      return JSON.parse(cached) as Audit[];
+    }
+    throw err;
+  }
 }
 
 export async function fetchAudit(auditId: string): Promise<AuditDetail> {
-  const response = await authedFetch(`/api/audits/${auditId}`);
-  const body = await response.json();
-  return (body.data ?? body) as AuditDetail;
+  const key = `cache_audit_${auditId}`;
+  try {
+    const data = await authedFetch(`/api/audits/${auditId}`)
+      .then(r => r.json())
+      .then(b => (b.data ?? b) as AuditDetail);
+    await AsyncStorage.setItem(key, JSON.stringify(data));
+    return data;
+  } catch (err) {
+    const cached = await AsyncStorage.getItem(key);
+    if (cached) {
+      console.log(`[auditService] Offline — serving audit ${auditId} from cache`);
+      return JSON.parse(cached) as AuditDetail;
+    }
+    throw err;
+  }
 }
 
 export async function fetchTemplate(templateId: string): Promise<Template> {
-  const response = await authedFetch(`/api/templates/${templateId}`);
-  const body = await response.json();
-  return (body.data ?? body) as Template;
+  const key = `cache_template_${templateId}`;
+  try {
+    const data = await authedFetch(`/api/templates/${templateId}`)
+      .then(r => r.json())
+      .then(b => (b.data ?? b) as Template);
+    await AsyncStorage.setItem(key, JSON.stringify(data));
+    return data;
+  } catch (err) {
+    const cached = await AsyncStorage.getItem(key);
+    if (cached) {
+      console.log(`[auditService] Offline — serving template ${templateId} from cache`);
+      return JSON.parse(cached) as Template;
+    }
+    throw err;
+  }
 }

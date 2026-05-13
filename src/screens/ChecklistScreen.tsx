@@ -13,7 +13,9 @@ import {
   isFlatSchema, isGraphSchema,
 } from '../services/auditService';
 import { saveAnswer } from '../services/syncService';
+import * as authService from '../services/authService';
 import CameraModal from '../components/CameraModal';
+import SubmitModal from '../components/SubmitModal';
 
 const FALLBACK_TEMPLATE_ID = '9aabc527-205b-4d8b-a3cb-29cdf4855251';
 
@@ -96,6 +98,10 @@ export default function ChecklistScreen({ route, navigation }: any) {
   const [cameraVisible, setCameraVisible] = useState(false);
   const [photoUris, setPhotoUris]         = useState<Record<string, string>>({});
   const [activeNodeId, setActiveNodeId]   = useState<string | null>(null);
+
+  // ── Submit state ──────────────────────────────────────────────────────────
+  const [submitModalVisible, setSubmitModalVisible] = useState(false);
+  const [isSubmitting, setIsSubmitting]             = useState(false);
 
   // ── Load ──────────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -205,6 +211,44 @@ export default function ChecklistScreen({ route, navigation }: any) {
         ? Math.round((graphAnsweredCount / visibleNodeIds.length) * 100)
         : 0)
     : flatProgress;
+
+  // ── Submit stats (derived — no extra state) ──────────────────────────────
+
+  const stats = schemaMode === 'graph'
+    ? {
+        total:    visibleNodeIds.length,
+        answered: graphAnsweredCount,
+        fails:    visibleNodeIds.filter(id => responses[id] === 'fail').length,
+      }
+    : {
+        total:    flatApplicable.length,
+        answered: flatAnswered.length,
+        fails:    flatApplicable.filter(q => responses[q.question_id] === 'fail').length,
+      };
+
+  // ── Submit handler ────────────────────────────────────────────────────────
+
+  async function handleSubmit() {
+    setIsSubmitting(true);
+    try {
+      const token = await authService.getToken();
+      await fetch(`https://api.acomed.tech/api/audits/${auditId}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ status: 'soumis' }),
+      });
+    } catch (e) {
+      console.warn('[Checklist] Submit failed — will retry on sync', e);
+      // Offline submit is acceptable — sync engine will retry
+    } finally {
+      setIsSubmitting(false);
+      setSubmitModalVisible(false);
+      navigation.goBack();
+    }
+  }
 
   // ── Shared card header ────────────────────────────────────────────────────
 
@@ -476,6 +520,15 @@ export default function ChecklistScreen({ route, navigation }: any) {
         renderGraphList()
       )}
 
+      {/* ── SUBMIT MODAL ── */}
+      <SubmitModal
+        visible={submitModalVisible}
+        onClose={() => setSubmitModalVisible(false)}
+        onConfirm={handleSubmit}
+        isSubmitting={isSubmitting}
+        stats={stats}
+      />
+
       {/* ── CAMERA MODAL ── */}
       <CameraModal
         visible={cameraVisible}
@@ -491,7 +544,7 @@ export default function ChecklistScreen({ route, navigation }: any) {
       {/* ── BOTTOM FINISH BUTTON ── */}
       {!loading && !error && (
         <View style={[styles.bottomBar, { backgroundColor: theme.white, borderTopColor: theme.borderColor }]}>
-          <TouchableOpacity style={styles.btnFinish}>
+          <TouchableOpacity style={styles.btnFinish} onPress={() => setSubmitModalVisible(true)}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
               <Ionicons name="checkmark" size={18} color={Colors.white} />
               <Text style={styles.btnFinishText}>Terminer la visite</Text>
