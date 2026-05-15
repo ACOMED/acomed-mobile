@@ -4,10 +4,11 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import NetInfo from '@react-native-community/netinfo';
 import { Colors } from '../theme/colors';
 import { useTheme, DarkColors, LightColors } from '../theme/ThemeContext';
-import { getPendingCount, getQueue } from '../services/syncService';
+import { getPendingCount, getQueue, sync } from '../services/syncService';
 
 type SyncState = 'idle' | 'syncing' | 'done';
 
@@ -18,6 +19,7 @@ export default function SyncScreen() {
   const [syncState, setSyncState] = useState<SyncState>('idle');
   const [pendingCount, setPendingCount] = useState(0);
   const [queue, setQueue] = useState<any[]>([]);
+  const [lastSync, setLastSync] = useState<string>('Never');
 
   useEffect(() => {
     async function loadQueue() {
@@ -25,6 +27,8 @@ export default function SyncScreen() {
       const items = await getQueue();
       setPendingCount(count);
       setQueue(items);
+      const raw = await AsyncStorage.getItem('last_sync_time');
+      if (raw) setLastSync(new Date(raw).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
     }
     loadQueue();
   }, []);
@@ -41,10 +45,22 @@ export default function SyncScreen() {
 
   const isOffline = !isConnected;
 
-  function handleSyncNow() {
-    if (syncState === 'syncing') return;
+  async function handleSyncNow() {
+    if (syncState === 'syncing' || isOffline) return;
     setSyncState('syncing');
-    setTimeout(() => setSyncState('done'), 2000);
+    try {
+      await sync();
+      await AsyncStorage.setItem('last_sync_time', new Date().toISOString());
+      const count = await getPendingCount();
+      const items = await getQueue();
+      setPendingCount(count);
+      setQueue(items);
+      setLastSync(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
+      setSyncState('done');
+    } catch (e) {
+      console.warn('[SyncScreen] Manual sync failed:', e);
+      setSyncState('idle');
+    }
   }
 
   function getSyncButtonLabel() {
@@ -110,12 +126,12 @@ export default function SyncScreen() {
           </View>
           <View style={[styles.metricCard, { backgroundColor: theme.cardBg, borderColor: theme.borderColor }]}>
             <Ionicons name="sync-outline" size={22} color={theme.text2} />
-            <Text style={[styles.metricVal, { fontSize: 13, marginTop: 2, color: theme.text }]}>09:41 AM</Text>
+            <Text style={[styles.metricVal, { fontSize: 13, marginTop: 2, color: theme.text }]}>{lastSync}</Text>
             <Text style={[styles.metricLbl, { color: theme.text2 }]}>LAST SYNC</Text>
           </View>
           <View style={[styles.metricCard, { backgroundColor: Colors.greenLight, borderColor: '#A7F3D0' }]}>
             <Ionicons name="checkmark-circle-outline" size={22} color={Colors.green} />
-            <Text style={[styles.metricVal, { color: Colors.green }]}>18</Text>
+            <Text style={[styles.metricVal, { color: Colors.green }]}>{queue.filter(i => i.synced).length}</Text>
             <Text style={[styles.metricLbl, { color: theme.text2 }]}>SYNCED TODAY</Text>
           </View>
         </View>
@@ -125,7 +141,7 @@ export default function SyncScreen() {
           style={getSyncButtonStyle()}
           onPress={handleSyncNow}
           activeOpacity={0.8}
-          disabled={syncState === 'syncing'}
+          disabled={syncState === 'syncing' || !!isOffline}
         >
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
             <Ionicons

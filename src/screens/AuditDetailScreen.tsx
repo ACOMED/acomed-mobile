@@ -124,7 +124,7 @@ export default function AuditDetailScreen({ route, navigation }: any) {
 
           <TouchableOpacity
             style={[styles.btnOutline, { borderColor: Colors.green }]}
-            onPress={() => navigation.navigate('Issues')}
+            onPress={() => navigation.navigate('NonConformities', { auditId })}
           >
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
               <Ionicons name="warning-outline" size={16} color={Colors.green} />

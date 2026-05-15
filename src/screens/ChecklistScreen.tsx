@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity, StyleSheet,
-  Platform, ActivityIndicator, Image,
+  Platform, ActivityIndicator, Image, TextInput,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -17,7 +17,7 @@ import * as authService from '../services/authService';
 import CameraModal from '../components/CameraModal';
 import SubmitModal from '../components/SubmitModal';
 
-const FALLBACK_TEMPLATE_ID = '9aabc527-205b-4d8b-a3cb-29cdf4855251';
+const FALLBACK_TEMPLATE_ID = 'f78ad1f4-5d9d-4a11-95dc-0f890f393387';
 
 // ── Pure graph helpers (no component state) ───────────────────────────────────
 
@@ -168,6 +168,7 @@ export default function ChecklistScreen({ route, navigation }: any) {
     const parentValue = responses[q.parent_question_id];
     if (q.prerequisite_condition === 'EQUALS_YES') return parentValue !== 'pass';
     if (q.prerequisite_condition === 'EQUALS_NO')  return parentValue !== 'fail';
+    if (q.prerequisite_condition === 'COMPLETED')  return !parentValue || parentValue === '';
     return false;
   }
 
@@ -414,23 +415,50 @@ export default function ChecklistScreen({ route, navigation }: any) {
       <ScrollView style={styles.body} showsVerticalScrollIndicator={false}>
         {questions.map(q => {
           const blocked = isBlocked(q);
+          if (blocked) return null;
           const cur     = responses[q.question_id];
           return (
             <View
               key={q.question_id}
-              style={[
-                styles.questionCard,
-                { backgroundColor: theme.cardBg, borderColor: theme.borderColor },
-                blocked && styles.questionCardBlocked,
-              ]}
+              style={[styles.questionCard, { backgroundColor: theme.cardBg, borderColor: theme.borderColor }]}
             >
-              {renderCardHeader(q.question_id, cur, blocked)}
-              <Text style={[styles.qText, { color: blocked ? theme.text3 : theme.text }]}>
-                {blocked ? 'Blocked — prerequisite not met' : q.label}
-              </Text>
-              {q.type === 'booleanNode' && !blocked &&
+              {renderCardHeader(q.question_id, cur, false)}
+              <Text style={[styles.qText, { color: theme.text }]}>{q.label}</Text>
+              {(q.type === 'booleanNode' || q.type === 'boolean') &&
                 renderBooleanButtons(q.question_id, q.type, cur, val => handleFlatAnswer(q.question_id, val))
               }
+              {(q.type === 'text' || q.type === 'textNode') && (
+                <TextInput
+                  style={[styles.textInput, {
+                    color: theme.text,
+                    borderColor: theme.borderColor,
+                    backgroundColor: theme.cardBg,
+                  }]}
+                  placeholder="Enter your response..."
+                  placeholderTextColor={theme.text3}
+                  value={responses[q.question_id] || ''}
+                  onChangeText={(val) => handleFlatAnswer(q.question_id, val)}
+                  multiline
+                  numberOfLines={3}
+                />
+              )}
+              {(q.type === 'camera' || q.type === 'photo') && (
+                <TouchableOpacity
+                  style={[styles.placeholderBtn, {
+                    borderColor: theme.borderColor,
+                    backgroundColor: isDark ? '#1E293B' : Colors.grayLight,
+                  }]}
+                  onPress={() => { setActiveNodeId(q.question_id); setCameraVisible(true); }}
+                >
+                  <Ionicons name="camera-outline" size={15} color={theme.text2} />
+                  <Text style={[styles.placeholderText, { color: theme.text2 }]}>
+                    {photoUris[q.question_id] ? 'Retake Photo' : 'Take Photo'}
+                  </Text>
+                </TouchableOpacity>
+              )}
+              {(q.type === 'camera' || q.type === 'photo') && photoUris[q.question_id] && (
+                <Image source={{ uri: photoUris[q.question_id] }} style={styles.photoThumbnail} />
+              )}
             </View>
           );
         })}
@@ -536,7 +564,11 @@ export default function ChecklistScreen({ route, navigation }: any) {
         onPhotoCaptured={(uri) => {
           if (activeNodeId) {
             setPhotoUris(prev => ({ ...prev, [activeNodeId]: uri }));
-            handleGraphAnswer(activeNodeId, 'camera', uri);
+            if (schemaMode === 'flat') {
+              handleFlatAnswer(activeNodeId, uri);
+            } else {
+              handleGraphAnswer(activeNodeId, 'camera', uri);
+            }
           }
         }}
       />
@@ -627,4 +659,10 @@ const styles = StyleSheet.create({
   },
   btnFinishText: { color: Colors.white, fontSize: 16, fontWeight: '600' },
   savedLabel: { textAlign: 'center', fontSize: 11, marginTop: 6, marginBottom: 4 },
+  textInput: {
+    borderWidth: 1, borderRadius: 10,
+    padding: 10, marginTop: 10,
+    fontSize: 14, minHeight: 80,
+    textAlignVertical: 'top',
+  },
 });

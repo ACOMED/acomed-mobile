@@ -13,7 +13,8 @@ import LoginScreen           from '../screens/LoginScreen';
 import HomeScreen            from '../screens/HomeScreen';
 import AuditDetailScreen     from '../screens/AuditDetailScreen';
 import ChecklistScreen       from '../screens/ChecklistScreen';
-import ItemDetailScreen      from '../screens/ItemDetailScreen';
+import ItemDetailScreen           from '../screens/ItemDetailScreen';
+import NonConformitiesScreen      from '../screens/NonConformitiesScreen';
 import { ProfileScreen }     from '../screens/OtherScreens';
 import SyncScreen            from '../screens/SyncScreen';
 import NotificationsScreen   from '../screens/NotificationsScreen';
@@ -47,7 +48,8 @@ function HomeStackNavigator() {
       <HomeStack.Screen name="Home"        component={HomeScreen} />
       <HomeStack.Screen name="AuditDetail" component={AuditDetailScreen} />
       <HomeStack.Screen name="Checklist"   component={ChecklistScreen} />
-      <HomeStack.Screen name="ItemDetail"  component={ItemDetailScreen} />
+      <HomeStack.Screen name="ItemDetail"        component={ItemDetailScreen} />
+      <HomeStack.Screen name="NonConformities"   component={NonConformitiesScreen} />
     </HomeStack.Navigator>
   );
 }
@@ -95,7 +97,7 @@ function MainTabs() {
       {/* ── NOTIFICATIONS (badge) ── */}
 <Tab.Screen
   name="Notifications"
-  component={({ navigation }) => (
+  component={({ navigation }: any) => (
   <NotificationsScreen navigation={navigation} onUnreadChange={setUnreadCount} />
 )}
   options={{
