@@ -4,6 +4,7 @@
 Offline-first mobile audit app for Moroccan Ministry of Health inspectors.
 React Native + Expo SDK 54, TypeScript, AsyncStorage, React Navigation v7.
 PFE deadline: end of May 2026.
+Current branch: feat/ui-redesign (redesigning UI, logic must not change)
 
 ## Critical Rules
 - NEVER use WatermelonDB — incompatible with Expo SDK 54
@@ -12,6 +13,7 @@ PFE deadline: end of May 2026.
   import * as authService from '../services/authService'
 - Never hardcode mock data when real data is available
 - Do not over-engineer — this is a student project, keep it lean
+- Never touch logic, state, hooks, or navigation when doing UI work
 
 ## Backend
 - Base URL: https://api.acomed.tech
@@ -70,112 +72,130 @@ PFE deadline: end of May 2026.
 ```
 
 ### GET /api/templates/:id
+Template schema exists in TWO shapes:
+
+Shape A — flat (what ChecklistScreen reads):
 ```json
 {
-  "data": {
-    "id": "uuid",
-    "name": "ISO 9001 Master 2026",
-    "code": "TPL-xxx",
-    "schema": {
-      "questions": [
-        {
-          "question_id": "node_1",
-          "type": "booleanNode",
-          "label": "Are equipment calibration logs up to date?",
-          "required": true,
-          "reg_points": 5,
-          "mat_points": 2,
-          "trigger_capa": true,
-          "capa_severity": "Critical",
-          "parent_question_id": null,
-          "prerequisite_condition": null
-        }
-      ]
-    },
-    "created_at": "2026-05-06T..."
+  "schema": {
+    "questions": [
+      {
+        "question_id": "node_1",
+        "type": "boolean",
+        "label": "Question text",
+        "required": true,
+        "reg_points": 5,
+        "mat_points": 2,
+        "trigger_capa": true,
+        "capa_severity": "Critical",
+        "parent_question_id": null,
+        "prerequisite_condition": null
+      }
+    ]
+  }
+}
+```
+
+Shape B — graph (nodes + edges):
+```json
+{
+  "schema": {
+    "nodes": [{ "id": "node_1", "type": "boolean", "label": "..." }],
+    "edges": [{ "sourceNodeId": "node_1", "sourceHandle": "yes", "targetNodeId": "node_2" }]
   }
 }
 ```
 
 ### POST /api/sync
 - Body: { audits[], answers[], capas[] }
-- answers shape: { id, audit_id, question_id, response_value, created_at, updated_at }
+- answers shape: { id (must be valid UUID v4), audit_id, question_id, response_value, created_at, updated_at }
 - Conflict resolution: last-write-wins based on updated_at
+- Currently returns 500 — backend bug, not mobile bug
 
 ## Real Test Data
-- Template UUID: e3226ae3-29a9-470c-b052-d3d91fc6609a
-- Audit UUID (has one response): d0237f4c-b795-4c32-8eba-79b22de93dda
+- FALLBACK_TEMPLATE_ID: f78ad1f4-5d9d-4a11-95dc-0f890f393387 (SOUFIAN template, 6 questions)
+- TEST graph template: 9aabc527-205b-4d8b-a3cb-29cdf4855251 (4 nodes, real edges)
+- Audit UUID (has responses): d0237f4c-b795-4c32-8eba-79b22de93dda
 - Audit UUID (empty): fa907779-1701-4c27-ba68-a0fdcf3f15f6
 
 ## Services
 - authService.ts — login, logout, getToken, getUser, isAuthenticated
 - auditService.ts — fetchAudits, fetchAudit, fetchTemplate
-- syncService.ts — saveAnswer, getQueue, getPendingCount, sync (stub)
+  — all three functions have offline cache (AsyncStorage cache_audits, cache_audit_{id}, cache_template_{id})
+- syncService.ts — saveAnswer, getQueue, getPendingCount, sync
 - storage.ts — legacy helpers, do not use for new features
+
+## Components
+- src/components/CameraModal.tsx — full screen camera, calls onPhotoCaptured(uri)
+- src/components/SubmitModal.tsx — audit submission modal with stats
 
 ## What's Done
 - Auth end to end — login, token persistence, auto-login, logout
-- Profile shows real name and email from stored user
-- HomeScreen shows real audit list from API
-- ChecklistScreen fetches real template and renders questions
-- booleanNode questions render Pass/Fail/NA buttons
-- Conditional logic — questions blocked by prerequisite
-- Sync queue with deduplication and pending count
-- All UI screens complete with dark mode
-- Online/Offline badge wired to NetInfo
-- Notification badge wired to real unread count
-- WatermelonDB dead code removed
-- Sync engine — POST /api/sync called on network reconnection (AppNavigator.tsx)
-- SyncScreen wired to real getPendingCount() and getQueue()
-- AuditDetailScreen wired to real fetchAudit(auditId)
+- Auto-login works offline (token checked from AsyncStorage only)
+- Offline cache — fetchAudits, fetchAudit, fetchTemplate all cache to AsyncStorage
+- HomeScreen — real audit list from API with offline cache
+- AuditDetailScreen — real data from fetchAudit(auditId)
+- ChecklistScreen — supports BOTH flat and graph template schemas
+  - Flat mode: conditional logic (EQUALS_YES, EQUALS_NO, COMPLETED)
+  - Graph mode: decision tree traversal via nodes + edges
+  - Blocked questions hidden (not rendered) in flat mode
+  - Camera nodes wired to CameraModal
+  - Text nodes render TextInput
+  - Boolean nodes render Pass/Fail/NA buttons
+- Photo capture — CameraModal with expo-camera
+- Sync queue — answers queued with composite key auditId::questionId
+- Auto-sync — fires on offline→online transition in AppNavigator
+- SyncScreen — real pending count, queue, manual sync, last sync time
+- Submit audit — SubmitModal shows stats, PATCH /api/audits/:id status→soumis
+- NonConformitiesScreen — placeholder empty state
+- ProfileScreen — real name and email, dark mode toggle, sign out
+- Dark mode — full support via ThemeContext
 
-## What's Left (Priority Order)
-1. Photo capture — Expo Camera for evidence (lowest priority)
+## Current State (UI Redesign Branch)
+- Switching from green primary to navy #0d1b3e as primary text color
+- Green #1A6B4A kept as accent/action color only
+- Colors updated in src/theme/colors.ts and ThemeContext.tsx
+- Screens being redesigned one by one — logic untouched
+
+## Color System (New)
+- Navy (primary text): #0d1b3e
+- Green (accent/action): #1A6B4A
+- Background: #f9fafb
+- Card background: #ffffff
+- Border: #dde0e8
+- Text secondary: #8a8f9e
+- Text tertiary: #c0c4d0
+
+## Known Backend Bugs (not mobile issues)
+- POST /api/sync returns 500 — id field must be valid UUID v4
+- GET /api/audits/:id does not return template_id
+- Template SOUFIAN only has test data labels, not real healthcare questions
+- All audits show same facility name (test data issue)
 
 ## File Structure
 src/
   screens/
     LoginScreen.tsx
     HomeScreen.tsx
-    AuditDetailScreen.tsx      ← still shows mock data
-    ChecklistScreen.tsx        ← template hardcoded
+    AuditDetailScreen.tsx
+    ChecklistScreen.tsx
     ItemDetailScreen.tsx
-    SyncScreen.tsx             ← pending count hardcoded
+    SyncScreen.tsx
     NotificationsScreen.tsx
+    NonConformitiesScreen.tsx
     OtherScreens.tsx           ← ProfileScreen + IssuesScreen combined
   services/
     authService.ts
-    auditService.ts
+    auditService.ts            ← has offline cache layer
     syncService.ts
-    storage.ts
+    storage.ts                 ← legacy, do not use
   navigation/
-    AppNavigator.tsx
+    AppNavigator.tsx           ← auto-sync on reconnection
+  components/
+    CameraModal.tsx
+    SubmitModal.tsx
   theme/
-    colors.ts
-    ThemeContext.tsx
+    colors.ts                  ← updated to navy system
+    ThemeContext.tsx           ← LightColors/DarkColors updated
   mocks/
-    data.ts                    ← still used by ChecklistScreen/ItemDetail
-
-## Known Issues
-- Audit cards show same data because backend has same test data for all audits
-- TEMPLATE_ID fallback hardcoded in ChecklistScreen — waiting for backend to add template_id to GET /api/audits/:id response
-
-
-## Template Schema Reality
-
-Templates exist in TWO shapes in the backend:
-
-### Flat shape (legacy, used by current ChecklistScreen)
-schema.questions[] = array of question objects.
-
-### Graph shape (real source of truth, used by dashboard builder)
-schema.nodes[] + schema.edges[]
-- nodes: { id, type, label, x, y, color }
-- edges: { id, sourceNodeId, sourceHandle, targetNodeId, targetHandle }
-- sourceHandle values: "out" (unconditional), "yes", "no"
-- Root node = the node with no incoming edges
-- Traversal: render node → on answer, follow edge where sourceNodeId=current and sourceHandle matches answer → go to targetNodeId
-
-Node types seen so far: "text", "boolean", "booleanNode", "camera", "signature"
-
-The mobile app must support BOTH shapes — detect which one and render accordingly.
+    data.ts                    ← used by IssuesScreen only

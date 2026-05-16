@@ -256,10 +256,10 @@ export default function ChecklistScreen({ route, navigation }: any) {
   function renderCardHeader(qId: string, cur: string | undefined, blocked: boolean) {
     let circleIcon: any = 'ellipse-outline';
     let circleColor     = theme.text3;
-    if (cur === 'pass')                             { circleIcon = 'checkmark';              circleColor = Colors.green; }
-    else if (cur === 'fail')                        { circleIcon = 'close';                  circleColor = Colors.red;   }
-    else if (cur === 'na')                          { circleIcon = 'remove';                 circleColor = '#94A3B8';    }
-    else if (cur && cur !== undefined)              { circleIcon = 'checkmark-circle-outline'; circleColor = Colors.green; }
+    if (cur === 'pass')        { circleIcon = 'checkmark';               circleColor = '#1A6B4A'; }
+    else if (cur === 'fail')   { circleIcon = 'close';                   circleColor = '#C0392B'; }
+    else if (cur === 'na')     { circleIcon = 'remove';                  circleColor = '#94A3B8'; }
+    else if (cur)              { circleIcon = 'checkmark-circle-outline'; circleColor = '#1A6B4A'; }
 
     return (
       <View style={styles.qHeader}>
@@ -272,20 +272,20 @@ export default function ChecklistScreen({ route, navigation }: any) {
               <Text style={[styles.tagText, { color: '#64748B' }]}>Blocked</Text>
             </View>
           ) : cur === 'pass' ? (
-            <View style={[styles.tag, { backgroundColor: Colors.greenLight }]}>
-              <Text style={[styles.tagText, { color: Colors.greenDark }]}>Pass</Text>
+            <View style={[styles.tag, { backgroundColor: '#E8F5EF' }]}>
+              <Text style={[styles.tagText, { color: '#1A6B4A' }]}>Pass</Text>
             </View>
           ) : cur === 'fail' ? (
-            <View style={[styles.tag, { backgroundColor: Colors.redLight }]}>
-              <Text style={[styles.tagText, { color: Colors.red }]}>Fail</Text>
+            <View style={[styles.tag, { backgroundColor: '#FDEDEC' }]}>
+              <Text style={[styles.tagText, { color: '#C0392B' }]}>Fail</Text>
             </View>
           ) : cur === 'na' ? (
             <View style={[styles.tag, { backgroundColor: isDark ? '#1E293B' : '#F1F5F9' }]}>
               <Text style={[styles.tagText, { color: '#475569' }]}>N/A</Text>
             </View>
           ) : cur ? (
-            <View style={[styles.tag, { backgroundColor: Colors.greenLight }]}>
-              <Text style={[styles.tagText, { color: Colors.greenDark }]}>Done</Text>
+            <View style={[styles.tag, { backgroundColor: '#E8F5EF' }]}>
+              <Text style={[styles.tagText, { color: '#1A6B4A' }]}>Done</Text>
             </View>
           ) : (
             <View style={[styles.tag, { backgroundColor: isDark ? '#1E293B' : Colors.grayLight }]}>
@@ -317,16 +317,16 @@ export default function ChecklistScreen({ route, navigation }: any) {
     return (
       <View style={styles.answerBtnRow}>
         <TouchableOpacity
-          style={[styles.answerBtn, cur === 'pass' ? styles.answerBtnPassActive : { borderColor: Colors.green }]}
+          style={[styles.answerBtn, cur === 'pass' ? styles.answerBtnPassActive : { borderColor: '#1A6B4A' }]}
           onPress={() => onAnswer('pass')}
         >
-          <Text style={[styles.answerBtnText, { color: Colors.green }]}>Pass</Text>
+          <Text style={[styles.answerBtnText, { color: '#1A6B4A' }]}>Pass</Text>
         </TouchableOpacity>
         <TouchableOpacity
-          style={[styles.answerBtn, cur === 'fail' ? styles.answerBtnFailActive : { borderColor: Colors.red }]}
+          style={[styles.answerBtn, cur === 'fail' ? styles.answerBtnFailActive : { borderColor: '#C0392B' }]}
           onPress={() => onAnswer('fail')}
         >
-          <Text style={[styles.answerBtnText, { color: Colors.red }]}>Fail</Text>
+          <Text style={[styles.answerBtnText, { color: '#C0392B' }]}>Fail</Text>
         </TouchableOpacity>
         <TouchableOpacity
           style={[styles.answerBtn, cur === 'na' ? styles.answerBtnNaActive : { borderColor: '#94A3B8' }]}
@@ -422,6 +422,12 @@ export default function ChecklistScreen({ route, navigation }: any) {
               key={q.question_id}
               style={[styles.questionCard, { backgroundColor: theme.cardBg, borderColor: theme.borderColor }]}
             >
+              <View style={[
+                styles.cardAccent,
+                cur === 'pass' && { backgroundColor: '#1A6B4A' },
+                cur === 'fail' && { backgroundColor: '#C0392B' },
+                cur === 'na'   && { backgroundColor: '#94A3B8' },
+              ]} />
               {renderCardHeader(q.question_id, cur, false)}
               <Text style={[styles.qText, { color: theme.text }]}>{q.label}</Text>
               {(q.type === 'booleanNode' || q.type === 'boolean') &&
@@ -493,6 +499,12 @@ export default function ChecklistScreen({ route, navigation }: any) {
               key={nodeId}
               style={[styles.questionCard, { backgroundColor: theme.cardBg, borderColor: theme.borderColor }]}
             >
+              <View style={[
+                styles.cardAccent,
+                cur === 'pass' && { backgroundColor: '#1A6B4A' },
+                cur === 'fail' && { backgroundColor: '#C0392B' },
+                cur === 'na'   && { backgroundColor: '#94A3B8' },
+              ]} />
               {renderCardHeader(nodeId, cur, false)}
               <Text style={[styles.qText, { color: theme.text }]}>{node.label}</Text>
               {/* Only the last (current) unanswered node shows interactive inputs.
@@ -515,22 +527,23 @@ export default function ChecklistScreen({ route, navigation }: any) {
     <SafeAreaView style={[styles.safe, { backgroundColor: theme.background, paddingTop: Platform.OS === 'android' ? 35 : 0 }]}>
 
       {/* ── TOP BAR ── */}
-      <View style={[styles.topBar, { backgroundColor: theme.white, borderBottomColor: theme.borderColor }]}>
+      <View style={[styles.topBar, { backgroundColor: theme.white, borderBottomColor: '#dde0e8' }]}>
         <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Text style={[styles.backBtn, { color: theme.text }]}>‹</Text>
+          <Text style={styles.backBtn}>‹</Text>
         </TouchableOpacity>
-        <Text style={[styles.topBarTitle, { color: theme.text }]}>Checklist</Text>
-        <View style={[styles.offlineBadge, { backgroundColor: isDark ? '#1E293B' : Colors.grayLight, borderColor: theme.borderColor }]}>
-          <Text style={[styles.offlineText, { color: theme.text2 }]}>OFFLINE</Text>
-        </View>
+        <Text style={styles.topBarTitle}>Checklist</Text>
+        <View style={{ width: 28 }} />
       </View>
 
       {/* ── PROGRESS BAR ── */}
-      <View style={[styles.progressContainer, { backgroundColor: theme.white, borderBottomColor: theme.borderColor }]}>
+      <View style={[styles.progressContainer, { backgroundColor: theme.white, borderBottomColor: '#dde0e8' }]}>
+        <View style={styles.progressLabelRow}>
+          <Text style={styles.progressLabelLeft}>AUDIT PROGRESS</Text>
+          <Text style={[styles.progressLabelRight, { color: theme.text2 }]}>{progressLabel}</Text>
+        </View>
         <View style={[styles.progressWrap, { backgroundColor: theme.borderColor }]}>
           <View style={[styles.progressFill, { width: `${progressFillPct}%` as any }]} />
         </View>
-        <Text style={[styles.progressLabel, { color: theme.text2 }]}>{progressLabel}</Text>
       </View>
 
       {loading ? (
@@ -575,10 +588,10 @@ export default function ChecklistScreen({ route, navigation }: any) {
 
       {/* ── BOTTOM FINISH BUTTON ── */}
       {!loading && !error && (
-        <View style={[styles.bottomBar, { backgroundColor: theme.white, borderTopColor: theme.borderColor }]}>
+        <View style={[styles.bottomBar, { backgroundColor: theme.white, borderTopColor: '#dde0e8' }]}>
           <TouchableOpacity style={styles.btnFinish} onPress={() => setSubmitModalVisible(true)}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-              <Ionicons name="checkmark" size={18} color={Colors.white} />
+              <Ionicons name="checkmark" size={18} color="#ffffff" />
               <Text style={styles.btnFinishText}>Terminer la visite</Text>
             </View>
           </TouchableOpacity>
@@ -591,37 +604,57 @@ export default function ChecklistScreen({ route, navigation }: any) {
 
 const styles = StyleSheet.create({
   safe: { flex: 1 },
+
+  // Top bar
   topBar: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     paddingHorizontal: 20, paddingVertical: 10,
-    borderBottomWidth: 1,
+    borderBottomWidth: 0.5,
   },
-  backBtn: { fontSize: 28, lineHeight: 32 },
-  topBarTitle: { fontSize: 17, fontWeight: '600' },
-  offlineBadge: {
-    borderWidth: 1, borderRadius: 20,
-    paddingHorizontal: 10, paddingVertical: 4,
+  backBtn: { fontSize: 28, lineHeight: 32, color: '#0d1b3e' },
+  topBarTitle: { fontSize: 17, fontWeight: '600', color: '#0d1b3e' },
+
+  // Progress bar
+  progressContainer: { padding: 12, borderBottomWidth: 0.5 },
+  progressLabelRow: {
+    flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6,
   },
-  offlineText: { fontSize: 11, fontWeight: '700' },
-  progressContainer: { padding: 12, borderBottomWidth: 1 },
-  progressWrap: { height: 6, borderRadius: 99, overflow: 'hidden', marginBottom: 6 },
+  progressLabelLeft: {
+    fontSize: 11, fontWeight: '600', color: '#8a8f9e',
+    letterSpacing: 0.5, textTransform: 'uppercase',
+  },
+  progressLabelRight: { fontSize: 11 },
+  progressWrap: { height: 8, borderRadius: 99, overflow: 'hidden' },
   progressFill: { height: '100%', backgroundColor: Colors.green, borderRadius: 99 },
-  progressLabel: { fontSize: 12, textAlign: 'right' },
+
+  // Loading / error
   centered: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12 },
   errorText: { fontSize: 14, textAlign: 'center', paddingHorizontal: 32 },
+
+  // Body
   body: { flex: 1, padding: 16 },
+
+  // Question cards
   questionCard: {
-    borderRadius: 14, borderWidth: 1,
-    padding: 14, marginBottom: 10,
+    borderRadius: 14, borderWidth: 0.5,
+    padding: 16, marginBottom: 10,
+    overflow: 'hidden',
+    shadowColor: '#0d1b3e', shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04, shadowRadius: 3, elevation: 1,
   },
-  questionCardBlocked: { opacity: 0.5 },
+  cardAccent: {
+    position: 'absolute', left: 0, top: 0, bottom: 0,
+    width: 3, borderTopLeftRadius: 14, borderBottomLeftRadius: 14,
+  },
+
+  // Card header
   qHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 },
   qHeaderLeft: { flexDirection: 'row', alignItems: 'center', gap: 6, flex: 1 },
   qCodeBadge: {
-    backgroundColor: Colors.greenLight, borderRadius: 6,
+    backgroundColor: '#f5f6f9', borderRadius: 6,
     paddingHorizontal: 7, paddingVertical: 2,
   },
-  qCodeText: { fontSize: 11, fontWeight: '700', color: Colors.green },
+  qCodeText: { fontSize: 11, fontWeight: '600', color: '#8a8f9e' },
   tag: { borderRadius: 99, paddingHorizontal: 10, paddingVertical: 3 },
   tagText: { fontSize: 12, fontWeight: '600' },
   circleIndicator: {
@@ -629,19 +662,25 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     alignItems: 'center', justifyContent: 'center',
   },
-  circlePass: { borderColor: Colors.green, backgroundColor: Colors.greenLight },
-  circleFail: { borderColor: Colors.red,   backgroundColor: Colors.redLight   },
-  circleNa:   { borderColor: '#94A3B8',    backgroundColor: '#F1F5F9'         },
-  qText: { fontSize: 14, lineHeight: 20, marginTop: 8, marginBottom: 6 },
+  circlePass: { borderColor: '#1A6B4A', backgroundColor: '#E8F5EF' },
+  circleFail: { borderColor: '#C0392B', backgroundColor: '#FDEDEC' },
+  circleNa:   { borderColor: '#94A3B8', backgroundColor: '#F1F5F9' },
+
+  // Question text
+  qText: { fontSize: 15, lineHeight: 22, marginTop: 8, marginBottom: 8 },
+
+  // Answer buttons
   answerBtnRow: { flexDirection: 'row', gap: 8, marginTop: 10 },
   answerBtn: {
     flex: 1, borderRadius: 10, borderWidth: 1.5,
-    paddingVertical: 8, alignItems: 'center',
+    paddingVertical: 12, alignItems: 'center',
   },
-  answerBtnPassActive: { backgroundColor: Colors.greenLight, borderColor: Colors.green },
-  answerBtnFailActive: { backgroundColor: Colors.redLight,   borderColor: Colors.red   },
-  answerBtnNaActive:   { backgroundColor: '#F1F5F9',         borderColor: '#94A3B8'    },
-  answerBtnText: { fontSize: 13, fontWeight: '600' },
+  answerBtnPassActive: { backgroundColor: '#E8F5EF', borderColor: '#1A6B4A' },
+  answerBtnFailActive: { backgroundColor: '#FDEDEC', borderColor: '#C0392B' },
+  answerBtnNaActive:   { backgroundColor: '#F1F5F9', borderColor: '#94A3B8' },
+  answerBtnText: { fontSize: 13, fontWeight: '700' },
+
+  // Camera / placeholder inputs
   placeholderBtn: {
     flexDirection: 'row', alignItems: 'center', gap: 8,
     borderWidth: 1.5, borderRadius: 10,
@@ -651,18 +690,24 @@ const styles = StyleSheet.create({
   cameraInputWrap: { marginTop: 10 },
   photoPreviewRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   photoThumbnail: { width: 80, height: 80, borderRadius: 8 },
-  endLabel: { textAlign: 'center', fontSize: 11, padding: 12 },
-  bottomBar: { borderTopWidth: 1, padding: 12 },
-  btnFinish: {
-    backgroundColor: Colors.green, borderRadius: 14,
-    padding: 16, alignItems: 'center',
-  },
-  btnFinishText: { color: Colors.white, fontSize: 16, fontWeight: '600' },
-  savedLabel: { textAlign: 'center', fontSize: 11, marginTop: 6, marginBottom: 4 },
+
+  // Text input
   textInput: {
     borderWidth: 1, borderRadius: 10,
     padding: 10, marginTop: 10,
     fontSize: 14, minHeight: 80,
     textAlignVertical: 'top',
   },
+
+  // End of checklist
+  endLabel: { textAlign: 'center', fontSize: 11, padding: 12 },
+
+  // Bottom bar
+  bottomBar: { borderTopWidth: 0.5, padding: 12 },
+  btnFinish: {
+    backgroundColor: '#0d1b3e', borderRadius: 14,
+    padding: 16, alignItems: 'center',
+  },
+  btnFinishText: { color: '#ffffff', fontSize: 16, fontWeight: '600' },
+  savedLabel: { textAlign: 'center', fontSize: 11, marginTop: 6, marginBottom: 4 },
 });
