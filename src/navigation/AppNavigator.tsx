@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, ActivityIndicator } from 'react-native';
+import { View, ActivityIndicator } from 'react-native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
@@ -9,48 +9,70 @@ import { isAuthenticated } from '../services/authService';
 import { sync } from '../services/syncService';
 
 // Import all screens
-import LoginScreen           from '../screens/LoginScreen';
-import HomeScreen            from '../screens/HomeScreen';
-import AuditDetailScreen     from '../screens/AuditDetailScreen';
-import ChecklistScreen       from '../screens/ChecklistScreen';
-import ItemDetailScreen           from '../screens/ItemDetailScreen';
-import NonConformitiesScreen      from '../screens/NonConformitiesScreen';
-import { ProfileScreen }     from '../screens/OtherScreens';
-import SyncScreen            from '../screens/SyncScreen';
-import NotificationsScreen   from '../screens/NotificationsScreen';
+import LoginScreen            from '../screens/LoginScreen';
+import HomeScreen             from '../screens/HomeScreen';
+import AuditDetailScreen      from '../screens/AuditDetailScreen';
+import ChecklistScreen        from '../screens/ChecklistScreen';
+import ItemDetailScreen       from '../screens/ItemDetailScreen';
+import NonConformitiesScreen  from '../screens/NonConformitiesScreen';
+import { ProfileScreen }      from '../screens/OtherScreens';
+import SyncScreen             from '../screens/SyncScreen';
+import ReportScreen           from '../screens/ReportScreen';
 
-// ─── What this file does ─────────────────────────────────────────────────────
-// This is the navigation brain of the app.
-// Stack = screens that slide over each other (Login → Home → Detail)
-// Tabs  = bottom bar with Home, Notifications, Sync, Profile
-//
-// Structure:
-//   RootStack
-//   ├── Login (no tabs)
-//   └── MainTabs
-//       ├── Home tab          → HomeScreen (+ AuditDetail, Checklist, ItemDetail stack)
-//       ├── Notifications tab → NotificationsScreen (badge: 3)
-//       ├── Sync tab          → SyncScreen
-//       └── Profile tab       → ProfileScreen
+// ─── Navigation structure ─────────────────────────────────────────────────────
+// RootStack
+// ├── Login (no tabs)
+// └── MainTabs
+//     ├── Home tab    → HomeStackNavigator (Home → AuditDetail → Checklist …)
+//     ├── Audits tab  → HomeStackNavigator (same stack, separate instance)
+//     ├── Report tab  → ReportScreen
+//     ├── Sync tab    → SyncScreen
+//     └── Profile tab → ProfileScreen
 // ─────────────────────────────────────────────────────────────────────────────
 
-const ACTIVE_COLOR   = '#1A6B4A';
-const INACTIVE_COLOR = '#6B7280';
+const ACTIVE_COLOR   = '#0d1b3e';
+const INACTIVE_COLOR = '#8a8f9e';
 
-const Stack     = createNativeStackNavigator();
-const Tab       = createBottomTabNavigator();
-const HomeStack = createNativeStackNavigator();
+const Stack      = createNativeStackNavigator();
+const Tab        = createBottomTabNavigator();
+const HomeStack  = createNativeStackNavigator();
+const AuditsStack = createNativeStackNavigator();
+const ReportStack = createNativeStackNavigator();
 
-// The stack inside the Home tab — allows navigating to audit detail, checklist, etc.
+// Stack inside the Home tab
 function HomeStackNavigator() {
   return (
     <HomeStack.Navigator screenOptions={{ headerShown: false }}>
-      <HomeStack.Screen name="Home"        component={HomeScreen} />
-      <HomeStack.Screen name="AuditDetail" component={AuditDetailScreen} />
-      <HomeStack.Screen name="Checklist"   component={ChecklistScreen} />
-      <HomeStack.Screen name="ItemDetail"        component={ItemDetailScreen} />
-      <HomeStack.Screen name="NonConformities"   component={NonConformitiesScreen} />
+      <HomeStack.Screen name="Home"             component={HomeScreen} />
+      <HomeStack.Screen name="AuditDetail"      component={AuditDetailScreen} />
+      <HomeStack.Screen name="Checklist"        component={ChecklistScreen} />
+      <HomeStack.Screen name="ItemDetail"       component={ItemDetailScreen} />
+      <HomeStack.Screen name="NonConformities"  component={NonConformitiesScreen} />
     </HomeStack.Navigator>
+  );
+}
+
+// Stack inside the Report tab — Reports list → AuditDetail → Checklist
+function ReportStackNavigator() {
+  return (
+    <ReportStack.Navigator screenOptions={{ headerShown: false }}>
+      <ReportStack.Screen name="ReportHome"     component={ReportScreen} />
+      <ReportStack.Screen name="AuditDetail"    component={AuditDetailScreen} />
+      <ReportStack.Screen name="Checklist"      component={ChecklistScreen} />
+    </ReportStack.Navigator>
+  );
+}
+
+// Stack inside the Audits tab — same screens, separate navigator instance
+function AuditsStackNavigator() {
+  return (
+    <AuditsStack.Navigator screenOptions={{ headerShown: false }}>
+      <AuditsStack.Screen name="Home"            component={HomeScreen} />
+      <AuditsStack.Screen name="AuditDetail"     component={AuditDetailScreen} />
+      <AuditsStack.Screen name="Checklist"       component={ChecklistScreen} />
+      <AuditsStack.Screen name="ItemDetail"      component={ItemDetailScreen} />
+      <AuditsStack.Screen name="NonConformities" component={NonConformitiesScreen} />
+    </AuditsStack.Navigator>
   );
 }
 
@@ -58,9 +80,6 @@ function HomeStackNavigator() {
 function MainTabs() {
   const { isDark } = useTheme();
   const theme = isDark ? DarkColors : LightColors;
-
-  // Live badge count — updated by NotificationsScreen via onUnreadChange
-  const [unreadCount, setUnreadCount] = useState(0);
 
   return (
     <Tab.Navigator
@@ -73,8 +92,8 @@ function MainTabs() {
         tabBarStyle: {
           paddingTop: 6,
           backgroundColor: theme.white,
-          borderTopColor: theme.borderColor,
-          borderTopWidth: 1,
+          borderTopColor: '#dde0e8',
+          borderTopWidth: 0.5,
         },
       }}
     >
@@ -94,45 +113,37 @@ function MainTabs() {
         }}
       />
 
-      {/* ── NOTIFICATIONS (badge) ── */}
-<Tab.Screen
-  name="Notifications"
-  component={({ navigation }: any) => (
-  <NotificationsScreen navigation={navigation} onUnreadChange={setUnreadCount} />
-)}
-  options={{
-    tabBarLabel: 'Notifications',
-    tabBarIcon: ({ focused, size }) => (
-      <View style={{ position: 'relative' }}>
-        <Ionicons
-          name={focused ? 'notifications' : 'notifications-outline'}
-          size={size}
-          color={focused ? ACTIVE_COLOR : INACTIVE_COLOR}
-        />
-        {unreadCount > 0 && (
-          <View
-            style={{
-              position: 'absolute',
-              top: -4,
-              right: -6,
-              backgroundColor: '#EF4444',
-              borderRadius: 8,
-              minWidth: 16,
-              height: 16,
-              alignItems: 'center',
-              justifyContent: 'center',
-              paddingHorizontal: 3,
-            }}
-          >
-            <Text style={{ color: '#FFFFFF', fontSize: 9, fontWeight: '700' }}>
-              {unreadCount}
-            </Text>
-          </View>
-        )}
-      </View>
-    ),
-  }}
-/>
+      {/* ── AUDITS ── */}
+      <Tab.Screen
+        name="AuditsTab"
+        component={AuditsStackNavigator}
+        options={{
+          tabBarLabel: 'Audits',
+          tabBarIcon: ({ focused, size }) => (
+            <Ionicons
+              name={focused ? 'document-text' : 'document-text-outline'}
+              size={size}
+              color={focused ? ACTIVE_COLOR : INACTIVE_COLOR}
+            />
+          ),
+        }}
+      />
+
+      {/* ── REPORT ── */}
+      <Tab.Screen
+        name="ReportTab"
+        component={ReportStackNavigator}
+        options={{
+          tabBarLabel: 'Report',
+          tabBarIcon: ({ focused, size }) => (
+            <Ionicons
+              name={focused ? 'bar-chart' : 'bar-chart-outline'}
+              size={size}
+              color={focused ? ACTIVE_COLOR : INACTIVE_COLOR}
+            />
+          ),
+        }}
+      />
 
       {/* ── SYNC ── */}
       <Tab.Screen
@@ -196,7 +207,7 @@ export default function AppNavigator() {
   if (initialScreen === null) {
     return (
       <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#FFFFFF' }}>
-        <ActivityIndicator size="large" color="#1A6B4A" />
+        <ActivityIndicator size="large" color="#0d1b3e" />
       </View>
     );
   }

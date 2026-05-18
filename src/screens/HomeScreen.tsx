@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity, StyleSheet,
   Platform, ActivityIndicator,
@@ -7,8 +7,10 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../theme/colors';
 import { useTheme, DarkColors, LightColors } from '../theme/ThemeContext';
+import { useFocusEffect } from '@react-navigation/native';
 import { getUser, AuthUser } from '../services/authService';
 import { fetchAudits, Audit } from '../services/auditService';
+import { mergeAuditStatuses } from '../services/auditStatusService';
 
 function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
@@ -25,23 +27,30 @@ export default function HomeScreen({ navigation }: any) {
   const [loadingAudits, setLoadingAudits] = useState(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
 
-  useEffect(() => {
-    fetchAudits()
-      .then(setAudits)
-      .catch((err) => setFetchError(err.message ?? 'Failed to load audits.'))
-      .finally(() => setLoadingAudits(false));
-  }, []);
+  useFocusEffect(
+    useCallback(() => {
+      setLoadingAudits(true);
+      setFetchError(null);
+      fetchAudits()
+        .then(mergeAuditStatuses)
+        .then((all) => setAudits(all.filter((a) => a.status === 'brouillon' || a.status === 'en cours')))
+        .catch((err) => setFetchError(err.message ?? 'Failed to load audits.'))
+        .finally(() => setLoadingAudits(false));
+    }, [])
+  );
 
   function getActionLabel(status: string): string {
-    if (status === 'completed') return 'View Report ›';
-    if (status === 'in_progress') return 'Continue Audit ›';
+    if (status === 'en cours')                              return 'Continue ›';
+    if (status === 'soumis' || status === 'cloture' || status === 'planifie') return 'View ›';
     return 'Start Audit ›';
   }
 
   function getStatusPill(status: string): { borderColor: string; color: string; label: string } {
-    if (status === 'in_progress') return { borderColor: '#b45309', color: '#b45309', label: 'IN PROGRESS' };
-    if (status === 'completed')   return { borderColor: '#1A6B4A', color: '#1A6B4A', label: 'COMPLETED'   };
-    return { borderColor: '#8a8f9e', color: '#8a8f9e', label: 'ASSIGNED' };
+    if (status === 'en cours')  return { borderColor: '#185fa5', color: '#185fa5', label: 'IN PROGRESS' };
+    if (status === 'soumis')    return { borderColor: '#1A6B4A', color: '#1A6B4A', label: 'SUBMITTED'   };
+    if (status === 'cloture')   return { borderColor: '#8a8f9e', color: '#8a8f9e', label: 'CLOSED'      };
+    if (status === 'planifie')  return { borderColor: '#7c3aed', color: '#7c3aed', label: 'PLANNED'     };
+    return { borderColor: '#b45309', color: '#b45309', label: 'ASSIGNED' };
   }
 
   return (
@@ -71,7 +80,7 @@ export default function HomeScreen({ navigation }: any) {
         <View style={styles.statItem}>
           <View style={[styles.statAccent, { backgroundColor: '#b45309' }]} />
           <View>
-            <Text style={styles.statNumber}>{audits.filter(a => a.status === 'in_progress').length}</Text>
+            <Text style={styles.statNumber}>{audits.filter(a => a.status === 'en cours').length}</Text>
             <Text style={styles.statLabel}>In Progress</Text>
           </View>
         </View>
@@ -79,7 +88,7 @@ export default function HomeScreen({ navigation }: any) {
         <View style={styles.statItem}>
           <View style={[styles.statAccent, { backgroundColor: '#1A6B4A' }]} />
           <View>
-            <Text style={styles.statNumber}>{audits.filter(a => a.status === 'completed').length}</Text>
+            <Text style={styles.statNumber}>{audits.filter(a => a.status === 'soumis').length}</Text>
             <Text style={styles.statLabel}>Completed</Text>
           </View>
         </View>

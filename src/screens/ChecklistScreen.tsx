@@ -13,6 +13,7 @@ import {
   isFlatSchema, isGraphSchema,
 } from '../services/auditService';
 import { saveAnswer } from '../services/syncService';
+import { setLocalAuditStatus } from '../services/auditStatusService';
 import * as authService from '../services/authService';
 import CameraModal from '../components/CameraModal';
 import SubmitModal from '../components/SubmitModal';
@@ -225,6 +226,7 @@ export default function ChecklistScreen({ route, navigation }: any) {
     setIsSubmitting(true);
     try {
       const token = await authService.getToken();
+      await setLocalAuditStatus(auditId, 'soumis');
       await fetch(`https://api.acomed.tech/api/audits/${auditId}`, {
         method: 'PATCH',
         headers: {

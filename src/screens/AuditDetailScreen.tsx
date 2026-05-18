@@ -8,6 +8,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../theme/colors';
 import { useTheme, DarkColors, LightColors } from '../theme/ThemeContext';
 import { fetchAudit, AuditDetail } from '../services/auditService';
+import { setLocalAuditStatus, getLocalAuditStatus } from '../services/auditStatusService';
 
 function fmtScore(val: number | null): string {
   return val !== null && val !== undefined ? `${val}%` : '—';
@@ -25,31 +26,32 @@ export default function AuditDetailScreen({ route, navigation }: any) {
 
   useEffect(() => {
     fetchAudit(auditId)
-      .then(setAudit)
+      .then(async (fetched) => {
+        const local = await getLocalAuditStatus(auditId);
+        setAudit(local ? { ...fetched, status: local } : fetched);
+      })
       .catch((err) => setError(err.message ?? 'Failed to load audit.'))
       .finally(() => setLoading(false));
   }, [auditId]);
 
-  function getStatusTag(status: string) {
-    if (status === 'in_progress') return { bg: Colors.greenLight, color: Colors.greenDark, label: 'In Progress' };
-    if (status === 'completed')   return { bg: '#D1FAE5',         color: '#065F46',        label: 'Completed'   };
-    if (status === 'assigned')    return { bg: isDark ? '#1E293B' : Colors.grayLight, color: isDark ? '#94A3B8' : Colors.gray, label: 'Assigned' };
-    if (status === 'brouillon')   return { bg: isDark ? '#1E293B' : Colors.grayLight, color: isDark ? '#94A3B8' : Colors.gray, label: 'Brouillon' };
-    return { bg: isDark ? '#1E293B' : Colors.grayLight, color: isDark ? '#94A3B8' : Colors.gray, label: 'Pending' };
+  function getStatusPill(status: string): { borderColor: string; color: string; label: string } {
+    if (status === 'en cours')  return { borderColor: '#185fa5', color: '#185fa5', label: 'IN PROGRESS' };
+    if (status === 'soumis')    return { borderColor: '#1A6B4A', color: '#1A6B4A', label: 'SUBMITTED'   };
+    if (status === 'cloture')   return { borderColor: '#8a8f9e', color: '#8a8f9e', label: 'CLOSED'      };
+    if (status === 'planifie')  return { borderColor: '#7c3aed', color: '#7c3aed', label: 'PLANNED'     };
+    return { borderColor: '#b45309', color: '#b45309', label: 'ASSIGNED' };
   }
 
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: theme.background, paddingTop: Platform.OS === 'android' ? 35 : 0 }]}>
 
       {/* ── TOP BAR ── */}
-      <View style={[styles.topBar, { backgroundColor: theme.white, borderBottomColor: theme.borderColor }]}>
+      <View style={[styles.topBar, { backgroundColor: theme.white, borderBottomColor: '#dde0e8' }]}>
         <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Text style={[styles.backBtn, { color: theme.text }]}>‹</Text>
+          <Text style={styles.backBtn}>‹</Text>
         </TouchableOpacity>
-        <Text style={[styles.topBarTitle, { color: theme.text }]}>Audit Detail</Text>
-        <View style={[styles.offlineBadge, { backgroundColor: isDark ? '#1E293B' : Colors.grayLight, borderColor: theme.borderColor }]}>
-          <Text style={[styles.offlineText, { color: theme.text2 }]}>OFFLINE</Text>
-        </View>
+        <Text style={styles.topBarTitle}>Audit Detail</Text>
+        <View style={{ width: 28 }} />
       </View>
 
       {loading ? (
@@ -65,70 +67,86 @@ export default function AuditDetailScreen({ route, navigation }: any) {
         <ScrollView style={styles.body} showsVerticalScrollIndicator={false}>
 
           {/* ── FACILITY CARD ── */}
-          <View style={[styles.card, { backgroundColor: theme.cardBg, borderColor: theme.borderColor }]}>
-            <View style={styles.facilityRow}>
-              <View style={[styles.facilityIcon, { backgroundColor: isDark ? '#1E293B' : Colors.grayLight }]}>
-                <Ionicons name="business-outline" size={26} color={Colors.green} />
-              </View>
-              <View style={{ flex: 1 }}>
-                <View style={[styles.refTag, { backgroundColor: Colors.greenLight }]}>
-                  <Text style={styles.refTagText}>{audit.code}</Text>
-                </View>
-                <Text style={[styles.facilityName, { color: theme.text }]}>{audit.facility_name || audit.facility}</Text>
-                {(() => { const tag = getStatusTag(audit.status); return (
-                  <View style={[styles.statusTag, { backgroundColor: tag.bg, marginTop: 4 }]}>
-                    <Text style={[styles.statusTagText, { color: tag.color }]}>{tag.label}</Text>
+          <View style={styles.card}>
+            <Text style={styles.facilityName} numberOfLines={2}>
+              {audit.facility_name || audit.facility}
+            </Text>
+            <View style={styles.metaRow}>
+              <Text style={styles.refText}>{audit.code}</Text>
+              <View style={styles.metaSep} />
+              {(() => {
+                const pill = getStatusPill(audit.status);
+                return (
+                  <View style={[styles.statusPill, { borderColor: pill.borderColor }]}>
+                    <Text style={[styles.statusPillText, { color: pill.color }]}>{pill.label}</Text>
                   </View>
-                ); })()}
-              </View>
+                );
+              })()}
             </View>
-            <View style={styles.infoGrid}>
-              <View style={[styles.infoCell, { backgroundColor: isDark ? '#1E293B' : Colors.grayLight }]}>
-                <Text style={[styles.infoCellLabel, { color: theme.text3 }]}>COMPLIANCE</Text>
-                <Text style={[styles.infoCellValue, { color: theme.text }]}>{fmtScore(audit.compliance_score)}</Text>
+          </View>
+
+          {/* ── SCORES CARD ── */}
+          <View style={styles.card}>
+            <View style={styles.scoresRow}>
+              <View style={styles.scoreItem}>
+                <View style={styles.scoreLabelRow}>
+                  <Ionicons name="bar-chart-outline" size={13} color="#8a8f9e" />
+                  <Text style={styles.scoreLbl}>Compliance</Text>
+                </View>
+                <Text style={styles.scoreVal}>{fmtScore(audit.compliance_score)}</Text>
               </View>
-              <View style={[styles.infoCell, { backgroundColor: isDark ? '#1E293B' : Colors.grayLight }]}>
-                <Text style={[styles.infoCellLabel, { color: theme.text3 }]}>MATURITY</Text>
-                <Text style={[styles.infoCellValue, { color: theme.text }]}>{fmtScore(audit.maturity_score)}</Text>
+              <View style={styles.scoreDivider} />
+              <View style={styles.scoreItem}>
+                <View style={styles.scoreLabelRow}>
+                  <Ionicons name="trending-up-outline" size={13} color="#8a8f9e" />
+                  <Text style={styles.scoreLbl}>Maturity</Text>
+                </View>
+                <Text style={styles.scoreVal}>{fmtScore(audit.maturity_score)}</Text>
               </View>
             </View>
           </View>
 
           {/* ── INSPECTOR CARD ── */}
-          <View style={[styles.card, { backgroundColor: theme.cardBg, borderColor: theme.borderColor }]}>
-            <View style={styles.inspectorRow}>
-              <View style={[styles.inspectorIcon, { backgroundColor: isDark ? '#1E293B' : Colors.grayLight }]}>
-                <Ionicons name="person-outline" size={18} color={Colors.green} />
+          <View style={styles.card}>
+            <View style={styles.infoRow}>
+              <View style={styles.infoIconBox}>
+                <Ionicons name="person-outline" size={16} color="#8a8f9e" />
               </View>
               <View>
-                <Text style={[styles.inspectorLabel, { color: theme.text3 }]}>ASSIGNED INSPECTOR</Text>
-                <Text style={[styles.inspectorName, { color: theme.text }]}>{audit.inspector_name || '—'}</Text>
+                <Text style={styles.infoLbl}>Inspector</Text>
+                <Text style={styles.infoVal}>{audit.inspector_name || '—'}</Text>
               </View>
             </View>
-            <View style={[styles.dateRow, { borderTopColor: theme.borderColor }]}>
-              <Ionicons name="calendar-outline" size={14} color={theme.text3} />
-              <Text style={[styles.dateText, { color: theme.text2 }]}>{audit.date ?? '—'}</Text>
+            <View style={[styles.infoRow, { borderTopWidth: 0.5, borderTopColor: '#eef0f5', paddingTop: 12, marginTop: 12 }]}>
+              <View style={styles.infoIconBox}>
+                <Ionicons name="calendar-outline" size={16} color="#8a8f9e" />
+              </View>
+              <View>
+                <Text style={styles.infoLbl}>Date</Text>
+                <Text style={styles.infoVal}>{audit.date ?? '—'}</Text>
+              </View>
             </View>
           </View>
 
-          {/* ── ACTION BUTTONS ── */}
+          {/* ── ACTION BUTTON ── */}
           <TouchableOpacity
             style={styles.btnPrimary}
-            onPress={() => navigation.navigate('Checklist', { auditId })}
+            onPress={async () => {
+              if (audit.status !== 'soumis' && audit.status !== 'cloture') {
+                await setLocalAuditStatus(auditId, 'en cours');
+              }
+              navigation.navigate('Checklist', { auditId });
+            }}
           >
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-              <Ionicons name="clipboard-outline" size={18} color={Colors.white} />
-              <Text style={styles.btnPrimaryText}>Continue Checklist</Text>
-            </View>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[styles.btnOutline, { borderColor: Colors.green }]}
-            onPress={() => navigation.navigate('NonConformities', { auditId })}
-          >
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-              <Ionicons name="warning-outline" size={16} color={Colors.green} />
-              <Text style={styles.btnOutlineText}>Non-Conformities</Text>
+              <Ionicons name="clipboard-outline" size={18} color="#ffffff" />
+              <Text style={styles.btnPrimaryText}>
+                {audit.status === 'soumis' || audit.status === 'cloture'
+                  ? 'View Answers ›'
+                  : audit.status === 'brouillon'
+                    ? 'Start Checklist'
+                    : 'Continue Checklist'}
+              </Text>
             </View>
           </TouchableOpacity>
 
@@ -141,62 +159,59 @@ export default function AuditDetailScreen({ route, navigation }: any) {
 
 const styles = StyleSheet.create({
   safe: { flex: 1 },
+
+  // Top bar
   topBar: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     paddingHorizontal: 20, paddingVertical: 10,
-    borderBottomWidth: 1,
+    borderBottomWidth: 0.5,
   },
-  backBtn: { fontSize: 28, lineHeight: 32 },
-  topBarTitle: { fontSize: 17, fontWeight: '600' },
-  offlineBadge: {
-    borderWidth: 1, borderRadius: 20,
-    paddingHorizontal: 10, paddingVertical: 4,
-  },
-  offlineText: { fontSize: 11, fontWeight: '700' },
+  backBtn: { fontSize: 28, lineHeight: 32, color: '#0d1b3e' },
+  topBarTitle: { fontSize: 17, fontWeight: '600', color: '#0d1b3e' },
+
+  // States
   centered: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12 },
   errorText: { fontSize: 14, textAlign: 'center', paddingHorizontal: 32 },
   body: { flex: 1, padding: 16 },
+
+  // Cards
   card: {
-    borderRadius: 16, borderWidth: 1,
-    padding: 16, marginBottom: 14,
+    backgroundColor: '#ffffff',
+    borderWidth: 0.5, borderColor: '#dde0e8',
+    borderRadius: 14, padding: 16, marginBottom: 12,
+    shadowColor: '#0d1b3e', shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04, shadowRadius: 3, elevation: 1,
   },
-  facilityRow: { flexDirection: 'row', gap: 12, alignItems: 'flex-start', marginBottom: 12 },
-  facilityIcon: {
-    width: 52, height: 52, borderRadius: 12,
-    alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+
+  // Facility card
+  facilityName: { fontSize: 18, fontWeight: '600', color: '#0d1b3e', marginBottom: 10 },
+  metaRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  refText: { fontSize: 11, color: '#8a8f9e' },
+  metaSep: { width: 1, height: 12, backgroundColor: '#dde0e8' },
+  statusPill: { borderWidth: 1, borderRadius: 20, paddingHorizontal: 10, paddingVertical: 3 },
+  statusPillText: { fontSize: 11, fontWeight: '600' },
+
+  // Scores card
+  scoresRow: { flexDirection: 'row', alignItems: 'center' },
+  scoreItem: { flex: 1, alignItems: 'center' },
+  scoreLabelRow: { flexDirection: 'row', alignItems: 'center', gap: 5, marginBottom: 6 },
+  scoreLbl: { fontSize: 11, color: '#8a8f9e' },
+  scoreVal: { fontSize: 28, fontWeight: '600', color: '#0d1b3e' },
+  scoreDivider: { width: 1, height: 40, backgroundColor: '#dde0e8', marginHorizontal: 4 },
+
+  // Inspector card
+  infoRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  infoIconBox: {
+    width: 32, height: 32, borderRadius: 8,
+    backgroundColor: '#f5f6f9', alignItems: 'center', justifyContent: 'center',
   },
-  refTag: {
-    borderRadius: 99, paddingHorizontal: 8, paddingVertical: 2,
-    alignSelf: 'flex-start', marginBottom: 4,
-  },
-  refTagText: { fontSize: 11, fontWeight: '700', color: Colors.green },
-  facilityName: { fontSize: 18, fontWeight: '700', lineHeight: 22 },
-  statusTag: { borderRadius: 99, paddingHorizontal: 8, paddingVertical: 2, alignSelf: 'flex-start' },
-  statusTagText: { fontSize: 11, fontWeight: '600' },
-  infoGrid: { flexDirection: 'row', gap: 8 },
-  infoCell: { flex: 1, borderRadius: 10, padding: 10 },
-  infoCellLabel: { fontSize: 10, fontWeight: '700', letterSpacing: 0.5, marginBottom: 2 },
-  infoCellValue: { fontSize: 18, fontWeight: '700' },
-  inspectorRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 12 },
-  inspectorIcon: {
-    width: 36, height: 36, borderRadius: 18,
-    alignItems: 'center', justifyContent: 'center',
-  },
-  inspectorLabel: { fontSize: 10, fontWeight: '700', letterSpacing: 0.5, marginBottom: 2 },
-  inspectorName: { fontSize: 14, fontWeight: '600' },
-  dateRow: {
-    flexDirection: 'row', alignItems: 'center', gap: 6,
-    borderTopWidth: 1, paddingTop: 10,
-  },
-  dateText: { fontSize: 13 },
+  infoLbl: { fontSize: 12, color: '#8a8f9e' },
+  infoVal: { fontSize: 14, fontWeight: '500', color: '#0d1b3e', marginTop: 1 },
+
+  // Action button
   btnPrimary: {
-    backgroundColor: Colors.green, borderRadius: 14,
+    backgroundColor: '#0d1b3e', borderRadius: 14,
     padding: 16, alignItems: 'center', marginBottom: 10,
   },
-  btnPrimaryText: { color: Colors.white, fontSize: 16, fontWeight: '600' },
-  btnOutline: {
-    backgroundColor: 'transparent', borderWidth: 1.5,
-    borderRadius: 14, padding: 14, alignItems: 'center', marginBottom: 10,
-  },
-  btnOutlineText: { color: Colors.green, fontSize: 15, fontWeight: '600' },
+  btnPrimaryText: { color: '#ffffff', fontSize: 16, fontWeight: '600' },
 });
