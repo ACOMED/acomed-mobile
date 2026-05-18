@@ -134,24 +134,16 @@ export default function ChecklistScreen({ route, navigation }: any) {
 
       const { schema } = template;
 
-      console.log('[DEBUG] full schema:', JSON.stringify(schema));
-      console.log('[DEBUG] schema keys:', Object.keys(schema));
-      console.log('[DEBUG] nodes exists:', !!(schema as any).nodes);
-      console.log('[DEBUG] nodes length:', (schema as any).nodes?.length);
-      console.log('[DEBUG] questions exists:', !!(schema as any).questions);
-
       if (isGraphSchema(schema) && schema.nodes.length > 0) {
         const nodeMap = new Map(schema.nodes.map(n => [n.id, n]));
         const rootId  = findRoot(schema.nodes, schema.edges);
         const path    = buildInitialPath(rootId, nodeMap, schema.edges, initial);
-        console.log(`[Checklist] schema shape: graph, root: ${rootId}`);
         setGraphNodes(schema.nodes);
         setGraphEdges(schema.edges);
         setVisibleNodeIds(path);
         setSchemaMode('graph');
       } else {
         // isFlatSchema covers both the flat case and any unrecognised schema shape
-        console.log('[Checklist] schema shape: flat');
         setQuestions(isFlatSchema(schema) ? schema.questions : []);
         setSchemaMode('flat');
       }

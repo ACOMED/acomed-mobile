@@ -5,6 +5,7 @@ Offline-first mobile audit app for Moroccan Ministry of Health inspectors.
 React Native + Expo SDK 54, TypeScript, AsyncStorage, React Navigation v7.
 PFE deadline: end of May 2026.
 Current branch: feat/ui-redesign (redesigning UI, logic must not change)
+Working branch: feat/mobile-setup (stable, all logic working)
 
 ## Critical Rules
 - NEVER use WatermelonDB — incompatible with Expo SDK 54
@@ -106,24 +107,27 @@ Shape B — graph (nodes + edges):
 }
 ```
 
-### POST /api/sync
-- Body: { audits[], answers[], capas[] }
-- answers shape: { id (must be valid UUID v4), audit_id, question_id, response_value, created_at, updated_at }
-- Conflict resolution: last-write-wins based on updated_at
-- Currently returns 500 — backend bug, not mobile bug
+### POST /api/sync — CURRENTLY BROKEN
+- Body we send: { audits[], answers[], capas[] }
+- answers shape: { id (valid UUID v4), audit_id, question_id, response_value, created_at, updated_at }
+- Server returns: {"success":false,"message":"invalid input syntax for type json"}
+- UUID fix was applied — id field is now valid UUID v4
+- Root cause unknown — backend teammate must check server logs
+- field name might be wrong: response_value vs value vs answer
 
 ## Real Test Data
 - FALLBACK_TEMPLATE_ID: f78ad1f4-5d9d-4a11-95dc-0f890f393387 (SOUFIAN template, 6 questions)
 - TEST graph template: 9aabc527-205b-4d8b-a3cb-29cdf4855251 (4 nodes, real edges)
 - Audit UUID (has responses): d0237f4c-b795-4c32-8eba-79b22de93dda
-- Audit UUID (empty): fa907779-1701-4c27-ba68-a0fdcf3f15f6
+- Audit UUID (active, used for testing): 33410b8f-c0f4-4a10-8afd-f672dc06b923
 
 ## Services
 - authService.ts — login, logout, getToken, getUser, isAuthenticated
 - auditService.ts — fetchAudits, fetchAudit, fetchTemplate
-  — all three functions have offline cache (AsyncStorage cache_audits, cache_audit_{id}, cache_template_{id})
+  — all three have offline cache (cache_audits, cache_audit_{id}, cache_template_{id})
 - syncService.ts — saveAnswer, getQueue, getPendingCount, sync
-- storage.ts — legacy helpers, do not use for new features
+  — SyncEntry now has id field (UUID v4, generated on first save, preserved on update)
+- storage.ts — legacy, do not use
 
 ## Components
 - src/components/CameraModal.tsx — full screen camera, calls onPhotoCaptured(uri)
@@ -133,31 +137,36 @@ Shape B — graph (nodes + edges):
 - Auth end to end — login, token persistence, auto-login, logout
 - Auto-login works offline (token checked from AsyncStorage only)
 - Offline cache — fetchAudits, fetchAudit, fetchTemplate all cache to AsyncStorage
-- HomeScreen — real audit list from API with offline cache
+- HomeScreen — real audit list, offline cache, navy redesign
 - AuditDetailScreen — real data from fetchAudit(auditId)
 - ChecklistScreen — supports BOTH flat and graph template schemas
   - Flat mode: conditional logic (EQUALS_YES, EQUALS_NO, COMPLETED)
   - Graph mode: decision tree traversal via nodes + edges
-  - Blocked questions hidden (not rendered) in flat mode
-  - Camera nodes wired to CameraModal
-  - Text nodes render TextInput
-  - Boolean nodes render Pass/Fail/NA buttons
+  - Blocked questions hidden in flat mode
+  - Camera nodes → CameraModal
+  - Text nodes → TextInput
+  - Boolean/booleanNode → Pass/Fail/NA buttons
 - Photo capture — CameraModal with expo-camera
 - Sync queue — answers queued with composite key auditId::questionId
+  - Each entry has a stable UUID v4 id field
 - Auto-sync — fires on offline→online transition in AppNavigator
-- SyncScreen — real pending count, queue, manual sync, last sync time
+- SyncScreen — real pending count, queue, manual sync, last sync time, navy redesign
 - Submit audit — SubmitModal shows stats, PATCH /api/audits/:id status→soumis
 - NonConformitiesScreen — placeholder empty state
-- ProfileScreen — real name and email, dark mode toggle, sign out
-- Dark mode — full support via ThemeContext
+- ProfileScreen — real name/email, dark mode toggle, sign out, navy redesign
+- UI redesign — navy #0d1b3e primary, green #1A6B4A accent only
 
-## Current State (UI Redesign Branch)
-- Switching from green primary to navy #0d1b3e as primary text color
-- Green #1A6B4A kept as accent/action color only
-- Colors updated in src/theme/colors.ts and ThemeContext.tsx
-- Screens being redesigned one by one — logic untouched
+## Current Blockers (backend bugs — not mobile issues)
+1. POST /api/sync returns "invalid input syntax for type json"
+   - UUID fix applied, id field is now valid UUID v4
+   - Backend teammate must check: is response_value the correct field name?
+   - Backend teammate must check server logs for exact failure point
+2. GET /api/audits/:id does not return template_id
+   - Mobile uses FALLBACK_TEMPLATE_ID as workaround
+3. Test template SOUFIAN has generic labels not real healthcare questions
+4. All test audits show same facility name
 
-## Color System (New)
+## Color System (New — feat/ui-redesign branch)
 - Navy (primary text): #0d1b3e
 - Green (accent/action): #1A6B4A
 - Background: #f9fafb
@@ -166,36 +175,30 @@ Shape B — graph (nodes + edges):
 - Text secondary: #8a8f9e
 - Text tertiary: #c0c4d0
 
-## Known Backend Bugs (not mobile issues)
-- POST /api/sync returns 500 — id field must be valid UUID v4
-- GET /api/audits/:id does not return template_id
-- Template SOUFIAN only has test data labels, not real healthcare questions
-- All audits show same facility name (test data issue)
-
 ## File Structure
 src/
   screens/
     LoginScreen.tsx
-    HomeScreen.tsx
+    HomeScreen.tsx           ← redesigned
     AuditDetailScreen.tsx
-    ChecklistScreen.tsx
+    ChecklistScreen.tsx      ← redesigned
     ItemDetailScreen.tsx
-    SyncScreen.tsx
+    SyncScreen.tsx           ← redesigned
     NotificationsScreen.tsx
     NonConformitiesScreen.tsx
-    OtherScreens.tsx           ← ProfileScreen + IssuesScreen combined
+    OtherScreens.tsx         ← ProfileScreen redesigned, IssuesScreen unchanged
   services/
     authService.ts
-    auditService.ts            ← has offline cache layer
-    syncService.ts
-    storage.ts                 ← legacy, do not use
+    auditService.ts          ← offline cache layer
+    syncService.ts           ← UUID fix applied
+    storage.ts               ← legacy, do not use
   navigation/
-    AppNavigator.tsx           ← auto-sync on reconnection
+    AppNavigator.tsx         ← auto-sync on reconnection
   components/
     CameraModal.tsx
     SubmitModal.tsx
   theme/
-    colors.ts                  ← updated to navy system
-    ThemeContext.tsx           ← LightColors/DarkColors updated
+    colors.ts                ← navy system
+    ThemeContext.tsx         ← LightColors/DarkColors updated
   mocks/
-    data.ts                    ← used by IssuesScreen only
+    data.ts                  ← used by IssuesScreen only

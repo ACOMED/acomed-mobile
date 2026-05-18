@@ -145,19 +145,30 @@ export default function SyncScreen() {
           </View>
 
         </View>
+{/* ── SYNC NOW BUTTON ── */}
+<TouchableOpacity
+  style={getSyncButtonStyle()}
+  onPress={handleSyncNow}
+  activeOpacity={0.8}
+  disabled={syncState === 'syncing' || !!isOffline}
+>
+  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+    <Ionicons name="refresh-outline" size={20} color="#ffffff" />
+    <Text style={styles.syncBtnText}>{getSyncButtonLabel()}</Text>
+  </View>
+</TouchableOpacity>
 
-        {/* ── SYNC NOW BUTTON ── */}
-        <TouchableOpacity
-          style={getSyncButtonStyle()}
-          onPress={handleSyncNow}
-          activeOpacity={0.8}
-          disabled={syncState === 'syncing' || !!isOffline}
-        >
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-            <Ionicons name="refresh-outline" size={20} color="#ffffff" />
-            <Text style={styles.syncBtnText}>{getSyncButtonLabel()}</Text>
-          </View>
-        </TouchableOpacity>
+{/* ── DEV ONLY: clear queue ── */}
+<TouchableOpacity
+  onPress={async () => {
+    await AsyncStorage.removeItem('acomed_sync_queue');
+    setPendingCount(0);
+    setQueue([]);
+  }}
+  style={{ padding: 12, alignItems: 'center' }}
+>
+  <Text style={{ color: '#991b1b', fontSize: 13 }}>Clear queue (dev only)</Text>
+</TouchableOpacity>
 
         {/* ── PENDING QUEUE ── */}
         <Text style={styles.sectionTitle}>Pending Queue</Text>

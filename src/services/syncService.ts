@@ -17,6 +17,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 export interface SyncEntry {
   /** Composite deduplication key — never stored on the server, internal only. */
   _key: string;
+  /** Valid UUID v4 sent to the backend as the answer id. */
+  id: string;
   auditId: string;
   questionId: string;
   value: string;
@@ -38,6 +40,14 @@ const QUEUE_KEY = 'acomed_sync_queue';
 
 function makeKey(auditId: string, questionId: string): string {
   return `${auditId}::${questionId}`;
+}
+
+function generateUUID(): string {
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+    const r = Math.random() * 16 | 0;
+    const v = c === 'x' ? r : (r & 0x3 | 0x8);
+    return v.toString(16);
+  });
 }
 
 async function readQueue(): Promise<SyncEntry[]> {
@@ -80,9 +90,11 @@ export async function saveAnswer(
   const now = new Date().toISOString();
 
   const existingIndex = queue.findIndex((e) => e._key === key);
+  const existingEntry = existingIndex !== -1 ? queue[existingIndex] : undefined;
 
   const entry: SyncEntry = {
     _key: key,
+    id: existingEntry?.id ?? generateUUID(),
     auditId,
     questionId,
     value,
@@ -134,10 +146,10 @@ export async function sync(): Promise<void> {
   }
 
   const answers = pending.map((e) => ({
-    id: e._key,
+    id: e.id,
     audit_id: e.auditId,
     question_id: e.questionId,
-    response_value: e.value,
+    response_value: JSON.stringify(e.value),
     created_at: e.updated_at,
     updated_at: e.updated_at,
   }));
