@@ -115,7 +115,12 @@ export default function HomeScreen({ navigation }: any) {
               <TouchableOpacity
                 key={audit.id}
                 style={styles.auditCard}
-                onPress={() => navigation.navigate('AuditDetail', { auditId: audit.id })}
+                onPress={() =>
+                  navigation.navigate('AuditsTab', {
+                    screen: 'AuditDetail',
+                    params: { auditId: audit.id },
+                  })
+                }
               >
                 <Text style={styles.auditFacility} numberOfLines={1}>{audit.facility}</Text>
                 <View style={styles.auditMeta}>

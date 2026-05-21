@@ -14,7 +14,7 @@ function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
 }
 
-export default function ReportScreen({ navigation }: any) {
+export default function AuditsListScreen({ navigation }: any) {
   const { isDark } = useTheme();
   const theme = isDark ? DarkColors : LightColors;
 
@@ -28,8 +28,8 @@ export default function ReportScreen({ navigation }: any) {
       setError(null);
       fetchAudits()
         .then(mergeAuditStatuses)
-        .then((all) => setAudits(all.filter((a) => a.status === 'soumis')))
-        .catch((err) => setError(err.message ?? 'Failed to load reports.'))
+        .then((all) => setAudits(all.filter((a) => a.status === 'en cours' || a.status === 'brouillon')))
+        .catch((err) => setError(err.message ?? 'Failed to load audits.'))
         .finally(() => setLoading(false));
     }, [])
   );
@@ -41,9 +41,9 @@ export default function ReportScreen({ navigation }: any) {
       <View style={[styles.topBar, { backgroundColor: theme.white }]}>
         <View>
           <Text style={styles.topBarLabel}>ACOMED</Text>
-          <Text style={styles.topBarTitle}>Reports</Text>
+          <Text style={styles.topBarTitle}>Active Audits</Text>
         </View>
-        <Ionicons name="bar-chart-outline" size={20} color="#8a8f9e" />
+        <Ionicons name="document-text-outline" size={20} color="#8a8f9e" />
       </View>
 
       {loading ? (
@@ -57,30 +57,31 @@ export default function ReportScreen({ navigation }: any) {
         </View>
       ) : audits.length === 0 ? (
         <View style={styles.centered}>
-          <Ionicons name="document-outline" size={48} color="#c0c4d0" />
-          <Text style={styles.emptyText}>No submitted audits yet</Text>
+          <Ionicons name="clipboard-outline" size={48} color="#c0c4d0" />
+          <Text style={styles.emptyText}>No audits in progress</Text>
         </View>
       ) : (
         <ScrollView style={styles.body} showsVerticalScrollIndicator={false}>
-          <Text style={styles.sectionHeader}>Submitted Audits</Text>
           {audits.map((audit) => (
             <TouchableOpacity
               key={audit.id}
               style={styles.auditCard}
-              onPress={() => navigation.navigate('AuditAnswers', { auditId: audit.id })}
+              onPress={() => navigation.navigate('AuditDetail', { auditId: audit.id })}
             >
-              <View style={styles.cardTop}>
-                <Text style={styles.facilityName} numberOfLines={1}>{audit.facility}</Text>
-                <View style={styles.submittedPill}>
-                  <Text style={styles.submittedPillText}>SUBMITTED</Text>
+              <Text style={styles.auditFacility} numberOfLines={1}>{audit.facility}</Text>
+              <View style={styles.auditMeta}>
+                <Text style={styles.auditRef}>{audit.ref}</Text>
+                <View style={styles.metaSep} />
+                <View style={styles.statusPill}>
+                  <Text style={styles.statusPillText}>IN PROGRESS</Text>
                 </View>
               </View>
-              <View style={styles.cardMeta}>
-                <Text style={styles.refText}>{audit.ref}</Text>
+              <View style={styles.auditFooter}>
                 <View style={styles.dateRow}>
-                  <Ionicons name="calendar-outline" size={12} color="#8a8f9e" />
+                  <Ionicons name="calendar-outline" size={13} color="#8a8f9e" />
                   <Text style={styles.dateText}>{formatDate(audit.date)}</Text>
                 </View>
+                <Text style={styles.actionLink}>Continue ›</Text>
               </View>
             </TouchableOpacity>
           ))}
@@ -111,12 +112,6 @@ const styles = StyleSheet.create({
 
   body: { flex: 1, paddingHorizontal: 16, paddingTop: 16 },
 
-  sectionHeader: {
-    fontSize: 13, fontWeight: '600', color: '#8a8f9e',
-    letterSpacing: 0.07, textTransform: 'uppercase',
-    paddingHorizontal: 4, marginBottom: 12,
-  },
-
   auditCard: {
     backgroundColor: '#ffffff',
     borderWidth: 0.5, borderColor: '#dde0e8',
@@ -124,18 +119,20 @@ const styles = StyleSheet.create({
     shadowColor: '#0d1b3e', shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.05, shadowRadius: 4, elevation: 2,
   },
-  cardTop: {
-    flexDirection: 'row', alignItems: 'center',
-    justifyContent: 'space-between', marginBottom: 10,
-  },
-  facilityName: { fontSize: 15, fontWeight: '600', color: '#0d1b3e', flex: 1, marginRight: 8 },
-  submittedPill: {
-    borderWidth: 1, borderColor: '#1A6B4A', borderRadius: 20,
+  auditFacility: { fontSize: 15, fontWeight: '600', color: '#0d1b3e' },
+  auditMeta: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 6 },
+  auditRef: { fontSize: 11, color: '#8a8f9e' },
+  metaSep: { width: 1, height: 12, backgroundColor: '#dde0e8' },
+  statusPill: {
+    borderWidth: 1, borderColor: '#185fa5', borderRadius: 20,
     paddingHorizontal: 10, paddingVertical: 3,
   },
-  submittedPillText: { fontSize: 11, fontWeight: '600', color: '#1A6B4A' },
-  cardMeta: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  refText: { fontSize: 11, color: '#8a8f9e' },
+  statusPillText: { fontSize: 11, fontWeight: '600', color: '#185fa5' },
+  auditFooter: {
+    flexDirection: 'row', justifyContent: 'space-between',
+    alignItems: 'center', marginTop: 14,
+  },
   dateRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   dateText: { fontSize: 12, color: '#8a8f9e' },
+  actionLink: { fontSize: 13, fontWeight: '600', color: '#0d1b3e' },
 });

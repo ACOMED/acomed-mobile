@@ -18,6 +18,8 @@ import NonConformitiesScreen  from '../screens/NonConformitiesScreen';
 import { ProfileScreen }      from '../screens/OtherScreens';
 import SyncScreen             from '../screens/SyncScreen';
 import ReportScreen           from '../screens/ReportScreen';
+import AuditAnswersScreen     from '../screens/AuditAnswersScreen';
+import AuditsListScreen       from '../screens/AuditsListScreen';
 
 // ─── Navigation structure ─────────────────────────────────────────────────────
 // RootStack
@@ -57,6 +59,7 @@ function ReportStackNavigator() {
   return (
     <ReportStack.Navigator screenOptions={{ headerShown: false }}>
       <ReportStack.Screen name="ReportHome"     component={ReportScreen} />
+      <ReportStack.Screen name="AuditAnswers"   component={AuditAnswersScreen} />
       <ReportStack.Screen name="AuditDetail"    component={AuditDetailScreen} />
       <ReportStack.Screen name="Checklist"      component={ChecklistScreen} />
     </ReportStack.Navigator>
@@ -67,11 +70,9 @@ function ReportStackNavigator() {
 function AuditsStackNavigator() {
   return (
     <AuditsStack.Navigator screenOptions={{ headerShown: false }}>
-      <AuditsStack.Screen name="Home"            component={HomeScreen} />
-      <AuditsStack.Screen name="AuditDetail"     component={AuditDetailScreen} />
-      <AuditsStack.Screen name="Checklist"       component={ChecklistScreen} />
-      <AuditsStack.Screen name="ItemDetail"      component={ItemDetailScreen} />
-      <AuditsStack.Screen name="NonConformities" component={NonConformitiesScreen} />
+      <AuditsStack.Screen name="AuditsList"  component={AuditsListScreen} />
+      <AuditsStack.Screen name="AuditDetail" component={AuditDetailScreen} />
+      <AuditsStack.Screen name="Checklist"   component={ChecklistScreen} />
     </AuditsStack.Navigator>
   );
 }

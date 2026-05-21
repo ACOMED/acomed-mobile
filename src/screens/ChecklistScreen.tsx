@@ -18,7 +18,7 @@ import * as authService from '../services/authService';
 import CameraModal from '../components/CameraModal';
 import SubmitModal from '../components/SubmitModal';
 
-const FALLBACK_TEMPLATE_ID = 'f78ad1f4-5d9d-4a11-95dc-0f890f393387';
+const FALLBACK_TEMPLATE_ID = '10ed2d2b-b2e7-468e-b647-6d991c341535';
 
 // ── Pure graph helpers (no component state) ───────────────────────────────────
 
