@@ -30,27 +30,27 @@ export default function AuditDetailScreen({ route, navigation }: any) {
         const local = await getLocalAuditStatus(auditId);
         setAudit(local ? { ...fetched, status: local } : fetched);
       })
-      .catch((err) => setError(err.message ?? 'Failed to load audit.'))
+      .catch((err) => setError(err.message ?? 'Impossible de charger l\'audit.'))
       .finally(() => setLoading(false));
   }, [auditId]);
 
   function getStatusPill(status: string): { borderColor: string; color: string; label: string } {
-    if (status === 'en cours')  return { borderColor: '#185fa5', color: '#185fa5', label: 'IN PROGRESS' };
-    if (status === 'soumis')    return { borderColor: '#1A6B4A', color: '#1A6B4A', label: 'SUBMITTED'   };
-    if (status === 'cloture')   return { borderColor: '#8a8f9e', color: '#8a8f9e', label: 'CLOSED'      };
-    if (status === 'planifie')  return { borderColor: '#7c3aed', color: '#7c3aed', label: 'PLANNED'     };
-    return { borderColor: '#b45309', color: '#b45309', label: 'ASSIGNED' };
+    if (status === 'en cours')  return { borderColor: '#185fa5', color: '#185fa5', label: 'EN COURS'  };
+    if (status === 'soumis')    return { borderColor: '#1A6B4A', color: '#1A6B4A', label: 'SOUMIS'    };
+    if (status === 'cloture')   return { borderColor: '#8a8f9e', color: '#8a8f9e', label: 'CLÔTURÉ'   };
+    if (status === 'planifie')  return { borderColor: '#7c3aed', color: '#7c3aed', label: 'PLANIFIÉ'  };
+    return { borderColor: '#b45309', color: '#b45309', label: 'ASSIGNÉ' };
   }
 
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: theme.background, paddingTop: Platform.OS === 'android' ? 35 : 0 }]}>
 
       {/* ── TOP BAR ── */}
-      <View style={[styles.topBar, { backgroundColor: theme.white, borderBottomColor: '#dde0e8' }]}>
+      <View style={[styles.topBar, { backgroundColor: theme.white, borderBottomColor: theme.borderColor }]}>
         <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Text style={styles.backBtn}>‹</Text>
+          <Text style={[styles.backBtn, { color: theme.text }]}>‹</Text>
         </TouchableOpacity>
-        <Text style={styles.topBarTitle}>Audit Detail</Text>
+        <Text style={[styles.topBarTitle, { color: theme.text }]}>Détail de l'audit</Text>
         <View style={{ width: 28 }} />
       </View>
 
@@ -67,13 +67,13 @@ export default function AuditDetailScreen({ route, navigation }: any) {
         <ScrollView style={styles.body} showsVerticalScrollIndicator={false}>
 
           {/* ── FACILITY CARD ── */}
-          <View style={styles.card}>
-            <Text style={styles.facilityName} numberOfLines={2}>
+          <View style={[styles.card, { backgroundColor: theme.white, borderColor: theme.borderColor }]}>
+            <Text style={[styles.facilityName, { color: theme.text }]} numberOfLines={2}>
               {audit.facility_name || audit.facility}
             </Text>
             <View style={styles.metaRow}>
-              <Text style={styles.refText}>{audit.code}</Text>
-              <View style={styles.metaSep} />
+              <Text style={[styles.refText, { color: theme.text2 }]}>{audit.code}</Text>
+              <View style={[styles.metaSep, { backgroundColor: theme.borderColor }]} />
               {(() => {
                 const pill = getStatusPill(audit.status);
                 return (
@@ -86,44 +86,44 @@ export default function AuditDetailScreen({ route, navigation }: any) {
           </View>
 
           {/* ── SCORES CARD ── */}
-          <View style={styles.card}>
+          <View style={[styles.card, { backgroundColor: theme.white, borderColor: theme.borderColor }]}>
             <View style={styles.scoresRow}>
               <View style={styles.scoreItem}>
                 <View style={styles.scoreLabelRow}>
-                  <Ionicons name="bar-chart-outline" size={13} color="#8a8f9e" />
-                  <Text style={styles.scoreLbl}>Compliance</Text>
+                  <Ionicons name="bar-chart-outline" size={13} color={theme.text2} />
+                  <Text style={[styles.scoreLbl, { color: theme.text2 }]}>Conformité</Text>
                 </View>
-                <Text style={styles.scoreVal}>{fmtScore(audit.compliance_score)}</Text>
+                <Text style={[styles.scoreVal, { color: theme.text }]}>{fmtScore(audit.compliance_score)}</Text>
               </View>
-              <View style={styles.scoreDivider} />
+              <View style={[styles.scoreDivider, { backgroundColor: theme.borderColor }]} />
               <View style={styles.scoreItem}>
                 <View style={styles.scoreLabelRow}>
-                  <Ionicons name="trending-up-outline" size={13} color="#8a8f9e" />
-                  <Text style={styles.scoreLbl}>Maturity</Text>
+                  <Ionicons name="trending-up-outline" size={13} color={theme.text2} />
+                  <Text style={[styles.scoreLbl, { color: theme.text2 }]}>Maturité</Text>
                 </View>
-                <Text style={styles.scoreVal}>{fmtScore(audit.maturity_score)}</Text>
+                <Text style={[styles.scoreVal, { color: theme.text }]}>{fmtScore(audit.maturity_score)}</Text>
               </View>
             </View>
           </View>
 
           {/* ── INSPECTOR CARD ── */}
-          <View style={styles.card}>
+          <View style={[styles.card, { backgroundColor: theme.white, borderColor: theme.borderColor }]}>
             <View style={styles.infoRow}>
-              <View style={styles.infoIconBox}>
-                <Ionicons name="person-outline" size={16} color="#8a8f9e" />
+              <View style={[styles.infoIconBox, { backgroundColor: theme.background }]}>
+                <Ionicons name="person-outline" size={16} color={theme.text2} />
               </View>
               <View>
-                <Text style={styles.infoLbl}>Inspector</Text>
-                <Text style={styles.infoVal}>{audit.inspector_name || '—'}</Text>
+                <Text style={[styles.infoLbl, { color: theme.text2 }]}>Inspecteur</Text>
+                <Text style={[styles.infoVal, { color: theme.text }]}>{audit.inspector_name || '—'}</Text>
               </View>
             </View>
-            <View style={[styles.infoRow, { borderTopWidth: 0.5, borderTopColor: '#eef0f5', paddingTop: 12, marginTop: 12 }]}>
-              <View style={styles.infoIconBox}>
-                <Ionicons name="calendar-outline" size={16} color="#8a8f9e" />
+            <View style={[styles.infoRow, { borderTopWidth: 0.5, borderTopColor: theme.borderColor, paddingTop: 12, marginTop: 12 }]}>
+              <View style={[styles.infoIconBox, { backgroundColor: theme.background }]}>
+                <Ionicons name="calendar-outline" size={16} color={theme.text2} />
               </View>
               <View>
-                <Text style={styles.infoLbl}>Date</Text>
-                <Text style={styles.infoVal}>{audit.date ?? '—'}</Text>
+                <Text style={[styles.infoLbl, { color: theme.text2 }]}>Date de visite</Text>
+                <Text style={[styles.infoVal, { color: theme.text }]}>{audit.date ?? '—'}</Text>
               </View>
             </View>
           </View>
@@ -142,10 +142,10 @@ export default function AuditDetailScreen({ route, navigation }: any) {
               <Ionicons name="clipboard-outline" size={18} color="#ffffff" />
               <Text style={styles.btnPrimaryText}>
                 {audit.status === 'soumis' || audit.status === 'cloture'
-                  ? 'View Answers ›'
+                  ? 'Voir les réponses ›'
                   : audit.status === 'brouillon'
-                    ? 'Start Checklist'
-                    : 'Continue Checklist'}
+                    ? 'Démarrer la checklist'
+                    : 'Continuer la checklist'}
               </Text>
             </View>
           </TouchableOpacity>

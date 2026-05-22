@@ -34,23 +34,23 @@ export default function HomeScreen({ navigation }: any) {
       fetchAudits()
         .then(mergeAuditStatuses)
         .then((all) => setAudits(all.filter((a) => a.status === 'brouillon' || a.status === 'en cours')))
-        .catch((err) => setFetchError(err.message ?? 'Failed to load audits.'))
+        .catch((err) => setFetchError(err.message ?? 'Impossible de charger les audits.'))
         .finally(() => setLoadingAudits(false));
     }, [])
   );
 
   function getActionLabel(status: string): string {
-    if (status === 'en cours')                              return 'Continue ›';
-    if (status === 'soumis' || status === 'cloture' || status === 'planifie') return 'View ›';
-    return 'Start Audit ›';
+    if (status === 'en cours')                              return 'Continuer ›';
+    if (status === 'soumis' || status === 'cloture' || status === 'planifie') return 'Consulter ›';
+    return 'Démarrer ›';
   }
 
   function getStatusPill(status: string): { borderColor: string; color: string; label: string } {
-    if (status === 'en cours')  return { borderColor: '#185fa5', color: '#185fa5', label: 'IN PROGRESS' };
-    if (status === 'soumis')    return { borderColor: '#1A6B4A', color: '#1A6B4A', label: 'SUBMITTED'   };
-    if (status === 'cloture')   return { borderColor: '#8a8f9e', color: '#8a8f9e', label: 'CLOSED'      };
-    if (status === 'planifie')  return { borderColor: '#7c3aed', color: '#7c3aed', label: 'PLANNED'     };
-    return { borderColor: '#b45309', color: '#b45309', label: 'ASSIGNED' };
+    if (status === 'en cours')  return { borderColor: '#185fa5', color: '#185fa5', label: 'EN COURS'   };
+    if (status === 'soumis')    return { borderColor: '#1A6B4A', color: '#1A6B4A', label: 'SOUMIS'     };
+    if (status === 'cloture')   return { borderColor: '#8a8f9e', color: '#8a8f9e', label: 'CLÔTURÉ'    };
+    if (status === 'planifie')  return { borderColor: '#7c3aed', color: '#7c3aed', label: 'PLANIFIÉ'   };
+    return { borderColor: '#b45309', color: '#b45309', label: 'ASSIGNÉ' };
   }
 
   return (
@@ -59,37 +59,35 @@ export default function HomeScreen({ navigation }: any) {
       {/* ── TOP BAR ── */}
       <View style={[styles.topBar, { backgroundColor: theme.white, borderBottomColor: '#dde0e8' }]}>
         <View>
-          <Text style={[styles.greetingSub, { color: theme.text2 }]}>Good morning,</Text>
-          <Text style={styles.greetingName}>{user?.full_name || '—'}</Text>
+          <Text style={[styles.greetingSub, { color: theme.text2 }]}>Bonjour,</Text>
+          <Text style={[styles.greetingName, { color: theme.text }]}>{user?.full_name || '—'}</Text>
         </View>
-        <TouchableOpacity>
-          <Ionicons name="notifications-outline" size={22} color="#0d1b3e" />
-        </TouchableOpacity>
+        <View style={{ width: 22 }} />
       </View>
 
       {/* ── STATS ROW ── */}
-      <View style={[styles.statsRow, { backgroundColor: theme.white, borderBottomColor: '#dde0e8' }]}>
+      <View style={[styles.statsRow, { backgroundColor: theme.white, borderBottomColor: theme.borderColor }]}>
         <View style={styles.statItem}>
           <View style={[styles.statAccent, { backgroundColor: '#185fa5' }]} />
           <View>
-            <Text style={styles.statNumber}>{audits.length}</Text>
-            <Text style={styles.statLabel}>Audits Assigned</Text>
+            <Text style={[styles.statNumber, { color: theme.text }]}>{audits.length}</Text>
+            <Text style={[styles.statLabel, { color: theme.text2 }]}>Audits assignés</Text>
           </View>
         </View>
-        <View style={styles.statDivider} />
+        <View style={[styles.statDivider, { backgroundColor: theme.borderColor }]} />
         <View style={styles.statItem}>
           <View style={[styles.statAccent, { backgroundColor: '#b45309' }]} />
           <View>
-            <Text style={styles.statNumber}>{audits.filter(a => a.status === 'en cours').length}</Text>
-            <Text style={styles.statLabel}>In Progress</Text>
+            <Text style={[styles.statNumber, { color: theme.text }]}>{audits.filter(a => a.status === 'en cours').length}</Text>
+            <Text style={[styles.statLabel, { color: theme.text2 }]}>En cours</Text>
           </View>
         </View>
-        <View style={styles.statDivider} />
+        <View style={[styles.statDivider, { backgroundColor: theme.borderColor }]} />
         <View style={styles.statItem}>
           <View style={[styles.statAccent, { backgroundColor: '#1A6B4A' }]} />
           <View>
-            <Text style={styles.statNumber}>{audits.filter(a => a.status === 'soumis').length}</Text>
-            <Text style={styles.statLabel}>Completed</Text>
+            <Text style={[styles.statNumber, { color: theme.text }]}>{audits.filter(a => a.status === 'soumis').length}</Text>
+            <Text style={[styles.statLabel, { color: theme.text2 }]}>Soumis</Text>
           </View>
         </View>
       </View>
@@ -97,7 +95,7 @@ export default function HomeScreen({ navigation }: any) {
       <ScrollView style={styles.body} showsVerticalScrollIndicator={false}>
 
         {/* ── SECTION HEADER ── */}
-        <Text style={styles.sectionHeader}>Active Audits</Text>
+        <Text style={styles.sectionHeader}>Audits actifs</Text>
 
         {loadingAudits ? (
           <ActivityIndicator size="large" color={Colors.green} style={{ marginTop: 32 }} />
@@ -107,14 +105,14 @@ export default function HomeScreen({ navigation }: any) {
             <Text style={[styles.errorText, { color: Colors.red }]}>{fetchError}</Text>
           </View>
         ) : audits.length === 0 ? (
-          <Text style={[styles.emptyText, { color: theme.text2 }]}>No audits assigned.</Text>
+          <Text style={[styles.emptyText, { color: theme.text2 }]}>Aucun audit assigné.</Text>
         ) : (
           audits.map((audit) => {
             const pill = getStatusPill(audit.status);
             return (
               <TouchableOpacity
                 key={audit.id}
-                style={styles.auditCard}
+                style={[styles.auditCard, { backgroundColor: theme.white, borderColor: theme.borderColor }]}
                 onPress={() =>
                   navigation.navigate('AuditsTab', {
                     screen: 'AuditDetail',
@@ -122,7 +120,7 @@ export default function HomeScreen({ navigation }: any) {
                   })
                 }
               >
-                <Text style={styles.auditFacility} numberOfLines={1}>{audit.facility}</Text>
+                <Text style={[styles.auditFacility, { color: theme.text }]} numberOfLines={1}>{audit.facility}</Text>
                 <View style={styles.auditMeta}>
                   <Text style={styles.auditRef}>{audit.ref}</Text>
                   <View style={styles.metaSep} />
@@ -135,7 +133,7 @@ export default function HomeScreen({ navigation }: any) {
                     <Ionicons name="calendar-outline" size={13} color="#8a8f9e" />
                     <Text style={styles.dateText}>{formatDate(audit.date)}</Text>
                   </View>
-                  <Text style={styles.actionLink}>{getActionLabel(audit.status)}</Text>
+                  <Text style={[styles.actionLink, { color: theme.text }]}>{getActionLabel(audit.status)}</Text>
                 </View>
               </TouchableOpacity>
             );
@@ -167,11 +165,11 @@ const styles = StyleSheet.create({
     borderBottomWidth: 0.5,
     marginBottom: 16,
   },
-  statItem: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 10 },
-  statAccent: { width: 3, height: 28, borderRadius: 2 },
-  statNumber: { fontSize: 28, fontWeight: '600', color: '#0d1b3e' },
-  statLabel: { fontSize: 12, color: '#8a8f9e', marginTop: 2 },
-  statDivider: { width: 1, height: 40, backgroundColor: '#dde0e8', marginHorizontal: 4 },
+  statItem: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
+  statAccent: { width: 3, height: 28, borderRadius: 2, flexShrink: 0 },
+  statNumber: { fontSize: 26, fontWeight: '600', color: '#0d1b3e' },
+  statLabel: { fontSize: 11, color: '#8a8f9e', marginTop: 2 },
+  statDivider: { width: 1, height: 40, backgroundColor: '#dde0e8' },
 
   // Body
   body: { flex: 1, paddingHorizontal: 16, paddingTop: 0 },

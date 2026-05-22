@@ -38,17 +38,17 @@ export default function ReportScreen({ navigation }: any) {
     <SafeAreaView style={[styles.safe, { backgroundColor: theme.background, paddingTop: Platform.OS === 'android' ? 35 : 0 }]}>
 
       {/* ── TOP BAR ── */}
-      <View style={[styles.topBar, { backgroundColor: theme.white }]}>
+      <View style={[styles.topBar, { backgroundColor: theme.white, borderBottomColor: theme.borderColor }]}>
         <View>
-          <Text style={styles.topBarLabel}>ACOMED</Text>
-          <Text style={styles.topBarTitle}>Reports</Text>
+          <Text style={[styles.topBarLabel, { color: theme.text2 }]}>ACOMED</Text>
+          <Text style={[styles.topBarTitle, { color: theme.text }]}>Reports</Text>
         </View>
-        <Ionicons name="bar-chart-outline" size={20} color="#8a8f9e" />
+        <Ionicons name="bar-chart-outline" size={20} color={theme.text2} />
       </View>
 
       {loading ? (
         <View style={styles.centered}>
-          <ActivityIndicator size="large" color="#0d1b3e" />
+          <ActivityIndicator size="large" color={theme.text} />
         </View>
       ) : error ? (
         <View style={styles.centered}>
@@ -57,29 +57,29 @@ export default function ReportScreen({ navigation }: any) {
         </View>
       ) : audits.length === 0 ? (
         <View style={styles.centered}>
-          <Ionicons name="document-outline" size={48} color="#c0c4d0" />
-          <Text style={styles.emptyText}>No submitted audits yet</Text>
+          <Ionicons name="document-outline" size={48} color={theme.text3} />
+          <Text style={[styles.emptyText, { color: theme.text2 }]}>No submitted audits yet</Text>
         </View>
       ) : (
         <ScrollView style={styles.body} showsVerticalScrollIndicator={false}>
-          <Text style={styles.sectionHeader}>Submitted Audits</Text>
+          <Text style={[styles.sectionHeader, { color: theme.text2 }]}>Submitted Audits</Text>
           {audits.map((audit) => (
             <TouchableOpacity
               key={audit.id}
-              style={styles.auditCard}
+              style={[styles.auditCard, { backgroundColor: theme.white, borderColor: theme.borderColor }]}
               onPress={() => navigation.navigate('AuditAnswers', { auditId: audit.id })}
             >
               <View style={styles.cardTop}>
-                <Text style={styles.facilityName} numberOfLines={1}>{audit.facility}</Text>
+                <Text style={[styles.facilityName, { color: theme.text }]} numberOfLines={1}>{audit.facility}</Text>
                 <View style={styles.submittedPill}>
                   <Text style={styles.submittedPillText}>SUBMITTED</Text>
                 </View>
               </View>
               <View style={styles.cardMeta}>
-                <Text style={styles.refText}>{audit.ref}</Text>
+                <Text style={[styles.refText, { color: theme.text2 }]}>{audit.ref}</Text>
                 <View style={styles.dateRow}>
-                  <Ionicons name="calendar-outline" size={12} color="#8a8f9e" />
-                  <Text style={styles.dateText}>{formatDate(audit.date)}</Text>
+                  <Ionicons name="calendar-outline" size={12} color={theme.text2} />
+                  <Text style={[styles.dateText, { color: theme.text2 }]}>{formatDate(audit.date)}</Text>
                 </View>
               </View>
             </TouchableOpacity>

@@ -44,11 +44,11 @@ export const LightColors = {
   borderColor: '#dde0e8', // softer border
 };
 export const DarkColors = {
-  background: '#0F172A',
-  white: '#1E293B',
-  text: '#F1F5F9',
-  text2: '#94A3B8',
-  text3: '#64748B',
-  cardBg: '#1E293B',
-  borderColor: '#334155',
+  background: '#0a0f1e',
+  white: '#141c2e',
+  text: '#ffffff',
+  text2: '#a0aec0',
+  text3: '#4a5568',
+  cardBg: '#141c2e',
+  borderColor: '#1e2a42',
 };

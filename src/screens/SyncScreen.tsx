@@ -64,9 +64,9 @@ export default function SyncScreen() {
   }
 
   function getSyncButtonLabel() {
-    if (syncState === 'syncing') return 'Syncing…';
-    if (syncState === 'done')    return 'Sync complete';
-    return 'Sync now';
+    if (syncState === 'syncing') return 'Synchronisation…';
+    if (syncState === 'done')    return 'Sync terminée';
+    return 'Synchroniser';
   }
 
   function getSyncButtonStyle() {
@@ -79,14 +79,12 @@ export default function SyncScreen() {
     <SafeAreaView style={[styles.safe, { backgroundColor: theme.background, paddingTop: Platform.OS === 'android' ? 35 : 0 }]}>
 
       {/* ── TOP BAR ── */}
-      <View style={[styles.topBar, { backgroundColor: theme.white, borderBottomColor: '#dde0e8' }]}>
+      <View style={[styles.topBar, { backgroundColor: theme.white, borderBottomColor: theme.borderColor }]}>
         <View>
-          <Text style={styles.topBarLabel}>ACOMED</Text>
-          <Text style={styles.topBarTitle}>Sync</Text>
+          <Text style={[styles.topBarLabel, { color: theme.text2 }]}>ACOMED</Text>
+          <Text style={[styles.topBarTitle, { color: theme.text }]}>Synchronisation</Text>
         </View>
-        <TouchableOpacity>
-          <Ionicons name="notifications-outline" size={18} color="#0d1b3e" />
-        </TouchableOpacity>
+        <View style={{ width: 18 }} />
       </View>
 
       {/* ── CONNECTION BANNER ── */}
@@ -98,7 +96,7 @@ export default function SyncScreen() {
       ]}>
         <View style={[styles.bannerDot, { backgroundColor: isOffline ? '#f59e0b' : '#22c55e' }]} />
         <Text style={[styles.bannerText, { color: isOffline ? '#b45309' : '#166534' }]}>
-          {isOffline ? 'Offline — Changes saved locally' : 'Connected — Sync active'}
+          {isOffline ? 'Hors ligne — Modifications sauvegardées localement' : 'Connecté — Sync active'}
         </Text>
       </View>
 
@@ -110,28 +108,28 @@ export default function SyncScreen() {
           <View style={styles.metricCard}>
             <View style={styles.metricLabelRow}>
               <Ionicons name="time-outline" size={13} color="#8a8f9e" />
-              <Text style={styles.metricLbl}>Last synced</Text>
+              <Text style={styles.metricLbl}>Dernière sync</Text>
             </View>
-            <Text style={[styles.metricValMd, { color: '#0d1b3e' }]}>{lastSync}</Text>
+            <Text style={[styles.metricValMd, { color: theme.text }]}>{lastSync}</Text>
           </View>
 
           <View style={styles.metricCard}>
             <View style={styles.metricLabelRow}>
               <Ionicons name="cloud-upload-outline" size={13} color="#8a8f9e" />
-              <Text style={styles.metricLbl}>Pending items</Text>
+              <Text style={styles.metricLbl}>En attente</Text>
             </View>
-            <Text style={[styles.metricValLg, { color: pendingCount > 0 ? '#b45309' : '#0d1b3e' }]}>
+            <Text style={[styles.metricValLg, { color: pendingCount > 0 ? '#b45309' : theme.text }]}>
               {pendingCount}
             </Text>
-            <Text style={styles.metricSub}>Awaiting sync</Text>
+            <Text style={styles.metricSub}>À synchroniser</Text>
           </View>
 
           <View style={styles.metricCard}>
             <View style={styles.metricLabelRow}>
               <Ionicons name="checkmark" size={13} color="#8a8f9e" />
-              <Text style={styles.metricLbl}>Synced today</Text>
+              <Text style={styles.metricLbl}>Synchronisés aujourd'hui</Text>
             </View>
-            <Text style={[styles.metricValLg, { color: '#0d1b3e' }]}>
+            <Text style={[styles.metricValLg, { color: theme.text }]}>
               {queue.filter(i => i.synced).length}
             </Text>
           </View>
@@ -139,9 +137,9 @@ export default function SyncScreen() {
           <View style={styles.metricCard}>
             <View style={styles.metricLabelRow}>
               <Ionicons name="close-circle-outline" size={13} color="#8a8f9e" />
-              <Text style={styles.metricLbl}>Failed</Text>
+              <Text style={styles.metricLbl}>Échoués</Text>
             </View>
-            <Text style={[styles.metricValLg, { color: '#0d1b3e' }]}>0</Text>
+            <Text style={[styles.metricValLg, { color: theme.text }]}>0</Text>
           </View>
 
         </View>
@@ -158,20 +156,9 @@ export default function SyncScreen() {
   </View>
 </TouchableOpacity>
 
-{/* ── DEV ONLY: clear queue ── */}
-<TouchableOpacity
-  onPress={async () => {
-    await AsyncStorage.removeItem('acomed_sync_queue');
-    setPendingCount(0);
-    setQueue([]);
-  }}
-  style={{ padding: 12, alignItems: 'center' }}
->
-  <Text style={{ color: '#991b1b', fontSize: 13 }}>Clear queue (dev only)</Text>
-</TouchableOpacity>
 
-        {/* ── PENDING QUEUE ── */}
-        <Text style={styles.sectionTitle}>Pending Queue</Text>
+{/* ── PENDING QUEUE ── */}
+        <Text style={styles.sectionTitle}>File d'attente</Text>
 
         {queue.map((item) => (
           <View key={item.auditId + item.questionId} style={styles.queueItem}>
@@ -179,8 +166,8 @@ export default function SyncScreen() {
               <Ionicons name="clipboard-outline" size={15} color="#166534" />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={styles.queueQuestion}>Q: {item.questionId}</Text>
-              <Text style={styles.queueAudit}>Audit: {item.auditId.slice(0, 8)}...</Text>
+              <Text style={[styles.queueQuestion, { color: theme.text }]}>Q: {item.questionId}</Text>
+              <Text style={[styles.queueAudit, { color: theme.text2 }]}>Audit: {item.auditId.slice(0, 8)}...</Text>
               <Text style={styles.queueTime}>{item.updatedAt}</Text>
             </View>
             <View style={styles.queueDot} />

@@ -103,7 +103,7 @@ function MainTabs() {
         name="HomeTab"
         component={HomeStackNavigator}
         options={{
-          tabBarLabel: 'Home',
+          tabBarLabel: 'Accueil',
           tabBarIcon: ({ focused, size }) => (
             <Ionicons
               name={focused ? 'home' : 'home-outline'}
@@ -135,7 +135,7 @@ function MainTabs() {
         name="ReportTab"
         component={ReportStackNavigator}
         options={{
-          tabBarLabel: 'Report',
+          tabBarLabel: 'Rapports',
           tabBarIcon: ({ focused, size }) => (
             <Ionicons
               name={focused ? 'bar-chart' : 'bar-chart-outline'}
@@ -167,7 +167,7 @@ function MainTabs() {
         name="Profile"
         component={ProfileScreen}
         options={{
-          tabBarLabel: 'Profile',
+          tabBarLabel: 'Profil',
           tabBarIcon: ({ focused, size }) => (
             <Ionicons
               name={focused ? 'person' : 'person-outline'}

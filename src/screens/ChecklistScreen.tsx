@@ -258,20 +258,20 @@ export default function ChecklistScreen({ route, navigation }: any) {
     return (
       <View style={styles.qHeader}>
         <View style={styles.qHeaderLeft}>
-          <View style={styles.qCodeBadge}>
-            <Text style={styles.qCodeText}>{qId}</Text>
+          <View style={[styles.qCodeBadge, { backgroundColor: theme.background }]}>
+            <Text style={[styles.qCodeText, { color: theme.text2 }]}>{qId}</Text>
           </View>
           {blocked ? (
             <View style={[styles.tag, { backgroundColor: isDark ? '#1E293B' : '#F1F5F9' }]}>
-              <Text style={[styles.tagText, { color: '#64748B' }]}>Blocked</Text>
+              <Text style={[styles.tagText, { color: '#64748B' }]}>Bloqué</Text>
             </View>
           ) : cur === 'pass' ? (
             <View style={[styles.tag, { backgroundColor: '#E8F5EF' }]}>
-              <Text style={[styles.tagText, { color: '#1A6B4A' }]}>Pass</Text>
+              <Text style={[styles.tagText, { color: '#1A6B4A' }]}>Conforme</Text>
             </View>
           ) : cur === 'fail' ? (
             <View style={[styles.tag, { backgroundColor: '#FDEDEC' }]}>
-              <Text style={[styles.tagText, { color: '#C0392B' }]}>Fail</Text>
+              <Text style={[styles.tagText, { color: '#C0392B' }]}>Non conforme</Text>
             </View>
           ) : cur === 'na' ? (
             <View style={[styles.tag, { backgroundColor: isDark ? '#1E293B' : '#F1F5F9' }]}>
@@ -279,11 +279,11 @@ export default function ChecklistScreen({ route, navigation }: any) {
             </View>
           ) : cur ? (
             <View style={[styles.tag, { backgroundColor: '#E8F5EF' }]}>
-              <Text style={[styles.tagText, { color: '#1A6B4A' }]}>Done</Text>
+              <Text style={[styles.tagText, { color: '#1A6B4A' }]}>Complété</Text>
             </View>
           ) : (
             <View style={[styles.tag, { backgroundColor: isDark ? '#1E293B' : Colors.grayLight }]}>
-              <Text style={[styles.tagText, { color: isDark ? '#94A3B8' : Colors.gray }]}>Pending</Text>
+              <Text style={[styles.tagText, { color: isDark ? '#94A3B8' : Colors.gray }]}>En attente</Text>
             </View>
           )}
         </View>
@@ -303,8 +303,6 @@ export default function ChecklistScreen({ route, navigation }: any) {
   // ── Boolean answer buttons ────────────────────────────────────────────────
 
   function renderBooleanButtons(
-    id: string,
-    type: string,
     cur: string | undefined,
     onAnswer: (val: string) => void,
   ) {
@@ -314,13 +312,13 @@ export default function ChecklistScreen({ route, navigation }: any) {
           style={[styles.answerBtn, cur === 'pass' ? styles.answerBtnPassActive : { borderColor: '#1A6B4A' }]}
           onPress={() => onAnswer('pass')}
         >
-          <Text style={[styles.answerBtnText, { color: '#1A6B4A' }]}>Pass</Text>
+          <Text style={[styles.answerBtnText, { color: '#1A6B4A' }]}>Conforme</Text>
         </TouchableOpacity>
         <TouchableOpacity
           style={[styles.answerBtn, cur === 'fail' ? styles.answerBtnFailActive : { borderColor: '#C0392B' }]}
           onPress={() => onAnswer('fail')}
         >
-          <Text style={[styles.answerBtnText, { color: '#C0392B' }]}>Fail</Text>
+          <Text style={[styles.answerBtnText, { color: '#C0392B' }]}>Non conforme</Text>
         </TouchableOpacity>
         <TouchableOpacity
           style={[styles.answerBtn, cur === 'na' ? styles.answerBtnNaActive : { borderColor: '#94A3B8' }]}
@@ -339,8 +337,8 @@ export default function ChecklistScreen({ route, navigation }: any) {
       case 'boolean':
       case 'booleanNode':
         return renderBooleanButtons(
-          node.id, node.type, cur,
-          val => handleGraphAnswer(node.id, node.type, val),
+          cur,
+          (val) => handleGraphAnswer(node.id, node.type, val),
         );
 
       case 'text':
@@ -351,7 +349,7 @@ export default function ChecklistScreen({ route, navigation }: any) {
             onPress={() => handleGraphAnswer(node.id, node.type, 'done')}
           >
             <Ionicons name="create-outline" size={15} color={theme.text2} />
-            <Text style={[styles.placeholderText, { color: theme.text2 }]}>Continue (text input — TODO)</Text>
+            <Text style={[styles.placeholderText, { color: theme.text2 }]}>Continuer (saisie texte — TODO)</Text>
           </TouchableOpacity>
         );
 
@@ -366,7 +364,7 @@ export default function ChecklistScreen({ route, navigation }: any) {
                   onPress={() => { setActiveNodeId(node.id); setCameraVisible(true); }}
                 >
                   <Ionicons name="refresh-outline" size={15} color={theme.text2} />
-                  <Text style={[styles.placeholderText, { color: theme.text2 }]}>Retake</Text>
+                  <Text style={[styles.placeholderText, { color: theme.text2 }]}>Reprendre</Text>
                 </TouchableOpacity>
               </View>
             ) : (
@@ -375,7 +373,7 @@ export default function ChecklistScreen({ route, navigation }: any) {
                 onPress={() => { setActiveNodeId(node.id); setCameraVisible(true); }}
               >
                 <Ionicons name="camera-outline" size={15} color={theme.text2} />
-                <Text style={[styles.placeholderText, { color: theme.text2 }]}>Take Photo</Text>
+                <Text style={[styles.placeholderText, { color: theme.text2 }]}>Prendre une photo</Text>
               </TouchableOpacity>
             )}
           </View>
@@ -389,15 +387,15 @@ export default function ChecklistScreen({ route, navigation }: any) {
             onPress={() => handleGraphAnswer(node.id, node.type, 'signature_placeholder')}
           >
             <Ionicons name="pencil-outline" size={15} color={theme.text2} />
-            <Text style={[styles.placeholderText, { color: theme.text2 }]}>Sign here (TODO: signature pad)</Text>
+            <Text style={[styles.placeholderText, { color: theme.text2 }]}>Signer ici (TODO : pavé de signature)</Text>
           </TouchableOpacity>
         );
 
       default:
         // Unknown node type — fall back to boolean buttons
         return renderBooleanButtons(
-          node.id, node.type, cur,
-          val => handleGraphAnswer(node.id, node.type, val),
+          cur,
+          (val) => handleGraphAnswer(node.id, node.type, val),
         );
     }
   }
@@ -425,7 +423,7 @@ export default function ChecklistScreen({ route, navigation }: any) {
               {renderCardHeader(q.question_id, cur, false)}
               <Text style={[styles.qText, { color: theme.text }]}>{q.label}</Text>
               {(q.type === 'booleanNode' || q.type === 'boolean') &&
-                renderBooleanButtons(q.question_id, q.type, cur, val => handleFlatAnswer(q.question_id, val))
+                renderBooleanButtons(cur, (val) => handleFlatAnswer(q.question_id, val))
               }
               {(q.type === 'text' || q.type === 'textNode') && (
                 <TextInput
@@ -521,18 +519,18 @@ export default function ChecklistScreen({ route, navigation }: any) {
     <SafeAreaView style={[styles.safe, { backgroundColor: theme.background, paddingTop: Platform.OS === 'android' ? 35 : 0 }]}>
 
       {/* ── TOP BAR ── */}
-      <View style={[styles.topBar, { backgroundColor: theme.white, borderBottomColor: '#dde0e8' }]}>
+      <View style={[styles.topBar, { backgroundColor: theme.white, borderBottomColor: theme.borderColor }]}>
         <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Text style={styles.backBtn}>‹</Text>
+          <Text style={[styles.backBtn, { color: theme.text }]}>‹</Text>
         </TouchableOpacity>
-        <Text style={styles.topBarTitle}>Checklist</Text>
+        <Text style={[styles.topBarTitle, { color: theme.text }]}>Checklist d'audit</Text>
         <View style={{ width: 28 }} />
       </View>
 
       {/* ── PROGRESS BAR ── */}
-      <View style={[styles.progressContainer, { backgroundColor: theme.white, borderBottomColor: '#dde0e8' }]}>
+      <View style={[styles.progressContainer, { backgroundColor: theme.white, borderBottomColor: theme.borderColor }]}>
         <View style={styles.progressLabelRow}>
-          <Text style={styles.progressLabelLeft}>AUDIT PROGRESS</Text>
+          <Text style={[styles.progressLabelLeft, { color: theme.text2 }]}>PROGRESSION</Text>
           <Text style={[styles.progressLabelRight, { color: theme.text2 }]}>{progressLabel}</Text>
         </View>
         <View style={[styles.progressWrap, { backgroundColor: theme.borderColor }]}>
@@ -582,7 +580,7 @@ export default function ChecklistScreen({ route, navigation }: any) {
 
       {/* ── BOTTOM FINISH BUTTON ── */}
       {!loading && !error && (
-        <View style={[styles.bottomBar, { backgroundColor: theme.white, borderTopColor: '#dde0e8' }]}>
+        <View style={[styles.bottomBar, { backgroundColor: theme.white, borderTopColor: theme.borderColor }]}>
           <TouchableOpacity style={styles.btnFinish} onPress={() => setSubmitModalVisible(true)}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
               <Ionicons name="checkmark" size={18} color="#ffffff" />

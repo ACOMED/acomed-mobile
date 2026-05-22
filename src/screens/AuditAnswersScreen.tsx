@@ -57,17 +57,17 @@ export default function AuditAnswersScreen({ route, navigation }: any) {
     <SafeAreaView style={[styles.safe, { backgroundColor: theme.background, paddingTop: Platform.OS === 'android' ? 35 : 0 }]}>
 
       {/* ── TOP BAR ── */}
-      <View style={[styles.topBar, { backgroundColor: theme.white }]}>
+      <View style={[styles.topBar, { backgroundColor: theme.white, borderBottomColor: theme.borderColor }]}>
         <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Text style={styles.backBtn}>‹</Text>
+          <Text style={[styles.backBtn, { color: theme.text }]}>‹</Text>
         </TouchableOpacity>
-        <Text style={styles.topBarTitle}>Audit Report</Text>
+        <Text style={[styles.topBarTitle, { color: theme.text }]}>Audit Report</Text>
         <View style={{ width: 28 }} />
       </View>
 
       {loading ? (
         <View style={styles.centered}>
-          <ActivityIndicator size="large" color="#0d1b3e" />
+          <ActivityIndicator size="large" color={theme.text} />
         </View>
       ) : error ? (
         <View style={styles.centered}>
@@ -78,16 +78,16 @@ export default function AuditAnswersScreen({ route, navigation }: any) {
         <ScrollView style={styles.body} showsVerticalScrollIndicator={false}>
 
           {/* ── FACILITY CARD ── */}
-          <View style={styles.card}>
-            <Text style={styles.facilityName} numberOfLines={2}>
+          <View style={[styles.card, { backgroundColor: theme.white, borderColor: theme.borderColor }]}>
+            <Text style={[styles.facilityName, { color: theme.text }]} numberOfLines={2}>
               {audit.facility_name || audit.facility}
             </Text>
             <View style={styles.metaRow}>
-              <Text style={styles.refText}>{audit.code}</Text>
-              <View style={styles.metaSep} />
+              <Text style={[styles.refText, { color: theme.text2 }]}>{audit.code}</Text>
+              <View style={[styles.metaSep, { backgroundColor: theme.borderColor }]} />
               <View style={styles.dateRow}>
-                <Ionicons name="calendar-outline" size={12} color="#8a8f9e" />
-                <Text style={styles.dateText}>{audit.date ? formatDate(audit.date) : '—'}</Text>
+                <Ionicons name="calendar-outline" size={12} color={theme.text2} />
+                <Text style={[styles.dateText, { color: theme.text2 }]}>{audit.date ? formatDate(audit.date) : '—'}</Text>
               </View>
             </View>
             <View style={styles.submittedPill}>
@@ -97,49 +97,49 @@ export default function AuditAnswersScreen({ route, navigation }: any) {
 
           {/* ── SCORES ROW ── */}
           <View style={styles.scoresRow}>
-            <View style={[styles.card, styles.scoreCard]}>
-              <Text style={styles.scoreLbl}>Compliance</Text>
-              <Text style={styles.scoreVal}>{fmtScore(audit.compliance_score)}</Text>
-              <Text style={styles.scoreSub}>Pending calculation</Text>
+            <View style={[styles.card, styles.scoreCard, { backgroundColor: theme.white, borderColor: theme.borderColor }]}>
+              <Text style={[styles.scoreLbl, { color: theme.text2 }]}>Compliance</Text>
+              <Text style={[styles.scoreVal, { color: theme.text }]}>{fmtScore(audit.compliance_score)}</Text>
+              <Text style={[styles.scoreSub, { color: theme.text2 }]}>Pending calculation</Text>
             </View>
-            <View style={[styles.card, styles.scoreCard]}>
-              <Text style={styles.scoreLbl}>Maturity</Text>
-              <Text style={styles.scoreVal}>{fmtScore(audit.maturity_score)}</Text>
-              <Text style={styles.scoreSub}>Pending calculation</Text>
+            <View style={[styles.card, styles.scoreCard, { backgroundColor: theme.white, borderColor: theme.borderColor }]}>
+              <Text style={[styles.scoreLbl, { color: theme.text2 }]}>Maturity</Text>
+              <Text style={[styles.scoreVal, { color: theme.text }]}>{fmtScore(audit.maturity_score)}</Text>
+              <Text style={[styles.scoreSub, { color: theme.text2 }]}>Pending calculation</Text>
             </View>
           </View>
 
           {/* ── SUMMARY CARD ── */}
-          <View style={styles.card}>
-            <Text style={styles.summaryTitle}>Audit Summary</Text>
+          <View style={[styles.card, { backgroundColor: theme.white, borderColor: theme.borderColor }]}>
+            <Text style={[styles.summaryTitle, { color: theme.text }]}>Audit Summary</Text>
             <View style={styles.summaryRow}>
               <View style={styles.summaryItem}>
-                <Text style={styles.summaryNum}>{total}</Text>
-                <Text style={styles.summaryLbl}>Total Questions</Text>
+                <Text style={[styles.summaryNum, { color: theme.text }]}>{total}</Text>
+                <Text style={[styles.summaryLbl, { color: theme.text2 }]}>Total Questions</Text>
               </View>
-              <View style={styles.summaryDivider} />
+              <View style={[styles.summaryDivider, { backgroundColor: theme.borderColor }]} />
               <View style={styles.summaryItem}>
-                <Text style={styles.summaryNum}>{passed}</Text>
-                <Text style={styles.summaryLbl}>Passed</Text>
+                <Text style={[styles.summaryNum, { color: theme.text }]}>{passed}</Text>
+                <Text style={[styles.summaryLbl, { color: theme.text2 }]}>Passed</Text>
               </View>
-              <View style={styles.summaryDivider} />
+              <View style={[styles.summaryDivider, { backgroundColor: theme.borderColor }]} />
               <View style={styles.summaryItem}>
-                <Text style={styles.summaryNum}>{failed}</Text>
-                <Text style={styles.summaryLbl}>Failed</Text>
+                <Text style={[styles.summaryNum, { color: theme.text }]}>{failed}</Text>
+                <Text style={[styles.summaryLbl, { color: theme.text2 }]}>Failed</Text>
               </View>
             </View>
           </View>
 
           {/* ── ANSWERS ── */}
-          <Text style={styles.sectionHeader}>Answers</Text>
+          <Text style={[styles.sectionHeader, { color: theme.text2 }]}>Answers</Text>
           {responses.length === 0 ? (
-            <Text style={styles.emptyAnswers}>No answers recorded.</Text>
+            <Text style={[styles.emptyAnswers, { color: theme.text2 }]}>No answers recorded.</Text>
           ) : (
             responses.map((r) => {
               const kind = classifyAnswer(r.answer_value);
               return (
-                <View key={r.id} style={styles.answerCard}>
-                  <Text style={styles.answerQuestion} numberOfLines={3}>
+                <View key={r.id} style={[styles.answerCard, { backgroundColor: theme.white, borderColor: theme.borderColor }]}>
+                  <Text style={[styles.answerQuestion, { color: theme.text }]} numberOfLines={3}>
                     {r.question_text || r.question_id}
                   </Text>
                   {kind === 'pass' && (
@@ -158,8 +158,8 @@ export default function AuditAnswersScreen({ route, navigation }: any) {
                     </View>
                   )}
                   {kind === 'other' && (
-                    <View style={styles.answerPillOutline}>
-                      <Text style={styles.answerPillOutlineText} numberOfLines={1}>
+                    <View style={[styles.answerPillOutline, { borderColor: theme.borderColor }]}>
+                      <Text style={[styles.answerPillOutlineText, { color: theme.text }]} numberOfLines={1}>
                         {truncate(r.answer_value ?? '—', 30)}
                       </Text>
                     </View>

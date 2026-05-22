@@ -110,72 +110,72 @@ export function ProfileScreen({ navigation }: any) {
     <SafeAreaView style={[styles.profileSafe, { backgroundColor: theme.background, paddingTop: Platform.OS === 'android' ? 35 : 0 }]}>
 
       {/* ── TOP BAR ── */}
-      <View style={[styles.profileTopBar, { backgroundColor: theme.white }]}>
+      <View style={[styles.profileTopBar, { backgroundColor: theme.white, borderBottomColor: theme.borderColor }]}>
         <View>
-          <Text style={styles.profileTopLabel}>ACOMED</Text>
-          <Text style={styles.profileTopTitle}>Profile</Text>
+          <Text style={[styles.profileTopLabel, { color: theme.text2 }]}>ACOMED</Text>
+          <Text style={[styles.profileTopTitle, { color: theme.text }]}>Profil</Text>
         </View>
-        <Ionicons name="settings-outline" size={20} color="#8a8f9e" />
+        <Ionicons name="settings-outline" size={20} color={theme.text2} />
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false}>
 
         {/* ── AVATAR HERO ── */}
-        <View style={[styles.avatarHero, { backgroundColor: theme.white }]}>
-          <View style={styles.avatarCircle}>
+        <View style={[styles.avatarHero, { backgroundColor: theme.white, borderBottomColor: theme.borderColor }]}>
+          <View style={[styles.avatarCircle, { borderColor: theme.borderColor }]}>
             {initials ? (
-              <Text style={styles.avatarInitials}>{initials}</Text>
+              <Text style={[styles.avatarInitials, { color: theme.text }]}>{initials}</Text>
             ) : (
-              <Ionicons name="person" size={30} color="#8a8f9e" />
+              <Ionicons name="person" size={30} color={theme.text2} />
             )}
             <View style={styles.avatarOnlineDot} />
           </View>
-          <Text style={styles.profileName}>{user?.full_name || '—'}</Text>
-          <Text style={styles.profileRole}>Inspecteur sanitaire — Ministère de la Santé</Text>
+          <Text style={[styles.profileName, { color: theme.text }]}>{user?.full_name || '—'}</Text>
+          <Text style={[styles.profileRole, { color: theme.text2 }]}>Inspecteur sanitaire — Ministère de la Santé</Text>
           <View style={styles.idPill}>
             <Text style={styles.idPillText}>ID : {user?.id?.slice(0, 8) || '—'}</Text>
           </View>
         </View>
 
         {/* ── STATS GRID ── */}
-        <View style={styles.statsGrid}>
-          <View style={styles.statCard}>
-            <Text style={styles.statVal}>—</Text>
-            <Text style={styles.statLbl}>Total audits</Text>
+        <View style={[styles.statsGrid, { backgroundColor: theme.background }]}>
+          <View style={[styles.statCard, { backgroundColor: theme.white }]}>
+            <Text style={[styles.statVal, { color: theme.text }]}>—</Text>
+            <Text style={[styles.statLbl, { color: theme.text2 }]}>Total audits</Text>
           </View>
-          <View style={styles.statCard}>
-            <Text style={styles.statVal}>—</Text>
-            <Text style={styles.statLbl}>Avg. compliance</Text>
+          <View style={[styles.statCard, { backgroundColor: theme.white }]}>
+            <Text style={[styles.statVal, { color: theme.text }]}>—</Text>
+            <Text style={[styles.statLbl, { color: theme.text2 }]}>Conformité moy.</Text>
           </View>
-          <View style={styles.statCard}>
-            <Text style={styles.statVal}>—</Text>
-            <Text style={styles.statLbl}>This quarter</Text>
+          <View style={[styles.statCard, { backgroundColor: theme.white }]}>
+            <Text style={[styles.statVal, { color: theme.text }]}>—</Text>
+            <Text style={[styles.statLbl, { color: theme.text2 }]}>Ce trimestre</Text>
           </View>
-          <View style={styles.statCard}>
-            <Text style={[styles.statVal, { fontSize: 16 }]}>{user?.role || 'Inspector'}</Text>
-            <Text style={styles.statLbl}>Role</Text>
+          <View style={[styles.statCard, { backgroundColor: theme.white }]}>
+            <Text style={[styles.statVal, { fontSize: 16, color: theme.text }]}>{user?.role || 'Inspector'}</Text>
+            <Text style={[styles.statLbl, { color: theme.text2 }]}>Role</Text>
           </View>
         </View>
 
         {/* ── ACCOUNT DETAILS ── */}
-        <Text style={styles.profileSectionLabel}>Account details</Text>
-        <View style={[styles.profileCard, { borderColor: '#dde0e8' }]}>
+        <Text style={[styles.profileSectionLabel, { color: theme.text2 }]}>Account details</Text>
+        <View style={[styles.profileCard, { borderColor: theme.borderColor, backgroundColor: theme.white }]}>
           <InfoRow icon="mail-outline" label="Email" value={user?.email || '—'} theme={theme} />
           <InfoRow icon="person-outline" label="Role" value={user?.role || '—'} isLast theme={theme} />
         </View>
 
         {/* ── PREFERENCES ── */}
-        <Text style={styles.profileSectionLabel}>Preferences</Text>
-        <View style={[styles.profileCard, { borderColor: '#dde0e8' }]}>
+        <Text style={[styles.profileSectionLabel, { color: theme.text2 }]}>Preferences</Text>
+        <View style={[styles.profileCard, { borderColor: theme.borderColor, backgroundColor: theme.white }]}>
           {/* Dark mode row */}
-          <View style={styles.prefRow}>
+          <View style={[styles.prefRow, { borderBottomColor: theme.borderColor }]}>
             <View style={styles.prefLeft}>
-              <View style={styles.prefIconBox}>
-                <Ionicons name="moon-outline" size={16} color="#8a8f9e" />
+              <View style={[styles.prefIconBox, { backgroundColor: theme.background }]}>
+                <Ionicons name="moon-outline" size={16} color={theme.text2} />
               </View>
               <View>
-                <Text style={styles.prefLabel}>Dark Mode</Text>
-                <Text style={styles.prefSub}>Light / Dark</Text>
+                <Text style={[styles.prefLabel, { color: theme.text }]}>Mode sombre</Text>
+                <Text style={[styles.prefSub, { color: theme.text2 }]}>Light / Dark</Text>
               </View>
             </View>
             <Switch
@@ -188,15 +188,15 @@ export function ProfileScreen({ navigation }: any) {
           {/* Language row */}
           <View style={[styles.prefRow, { borderBottomWidth: 0 }]}>
             <View style={styles.prefLeft}>
-              <View style={styles.prefIconBox}>
-                <Ionicons name="language-outline" size={16} color="#8a8f9e" />
+              <View style={[styles.prefIconBox, { backgroundColor: theme.background }]}>
+                <Ionicons name="language-outline" size={16} color={theme.text2} />
               </View>
               <View>
-                <Text style={styles.prefLabel}>Language</Text>
-                <Text style={styles.prefSub}>Français</Text>
+                <Text style={[styles.prefLabel, { color: theme.text }]}>Language</Text>
+                <Text style={[styles.prefSub, { color: theme.text2 }]}>Français</Text>
               </View>
             </View>
-            <Ionicons name="chevron-forward" size={16} color="#c0c4d0" />
+            <Ionicons name="chevron-forward" size={16} color={theme.text3} />
           </View>
         </View>
 
@@ -210,7 +210,7 @@ export function ProfileScreen({ navigation }: any) {
         >
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
             <Ionicons name="log-out-outline" size={18} color="#991b1b" />
-            <Text style={styles.signOutText}>Sign Out</Text>
+            <Text style={styles.signOutText}>Déconnexion</Text>
           </View>
         </TouchableOpacity>
 
@@ -223,22 +223,23 @@ export function ProfileScreen({ navigation }: any) {
 // ─────────────────────────────────────────────────────────────────────────────
 // InfoRow — icon box left, label+value stack middle, chevron right
 // ─────────────────────────────────────────────────────────────────────────────
-function InfoRow({ icon, label, value, isLast }: any) {
+function InfoRow({ icon, label, value, isLast, theme }: any) {
   return (
     <View style={[
       styles.infoRow,
       isLast && { borderBottomWidth: 0 },
+      { borderBottomColor: theme?.borderColor },
     ]}>
       <View style={styles.infoLeft}>
-        <View style={styles.infoIconBox}>
-          <Ionicons name={icon} size={16} color="#8a8f9e" />
+        <View style={[styles.infoIconBox, { backgroundColor: theme?.background }]}>
+          <Ionicons name={icon} size={16} color={theme?.text2 || '#8a8f9e'} />
         </View>
         <View>
-          <Text style={styles.infoLabel}>{label}</Text>
-          <Text style={styles.infoValue}>{value}</Text>
+          <Text style={[styles.infoLabel, { color: theme?.text2 }]}>{label}</Text>
+          <Text style={[styles.infoValue, { color: theme?.text }]}>{value}</Text>
         </View>
       </View>
-      <Ionicons name="chevron-forward" size={16} color="#c0c4d0" />
+      <Ionicons name="chevron-forward" size={16} color={theme?.text3 || '#c0c4d0'} />
     </View>
   );
 }
