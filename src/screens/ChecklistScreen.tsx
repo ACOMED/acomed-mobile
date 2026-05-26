@@ -353,7 +353,7 @@ export default function ChecklistScreen({ route, navigation }: any) {
             onPress={() => handleGraphAnswer(node.id, node.type, 'done')}
           >
             <Ionicons name="create-outline" size={15} color={theme.text2} />
-            <Text style={[styles.placeholderText, { color: theme.text2 }]}>Continuer (saisie texte — TODO)</Text>
+            <Text style={[styles.placeholderText, { color: theme.text2 }]}>Continuer</Text>
           </TouchableOpacity>
         );
 
@@ -391,7 +391,7 @@ export default function ChecklistScreen({ route, navigation }: any) {
             onPress={() => handleGraphAnswer(node.id, node.type, 'signature_placeholder')}
           >
             <Ionicons name="pencil-outline" size={15} color={theme.text2} />
-            <Text style={[styles.placeholderText, { color: theme.text2 }]}>Signer ici (TODO : pavé de signature)</Text>
+            <Text style={[styles.placeholderText, { color: theme.text2 }]}>Signer ici</Text>
           </TouchableOpacity>
         );
 
@@ -436,7 +436,7 @@ export default function ChecklistScreen({ route, navigation }: any) {
                     borderColor: theme.borderColor,
                     backgroundColor: theme.cardBg,
                   }]}
-                  placeholder="Enter your response..."
+                  placeholder="Saisir votre réponse..."
                   placeholderTextColor={theme.text3}
                   value={responses[q.question_id] || ''}
                   onChangeText={(val) => handleFlatAnswer(q.question_id, val)}
@@ -454,7 +454,7 @@ export default function ChecklistScreen({ route, navigation }: any) {
                 >
                   <Ionicons name="camera-outline" size={15} color={theme.text2} />
                   <Text style={[styles.placeholderText, { color: theme.text2 }]}>
-                    {photoUris[q.question_id] ? 'Retake Photo' : 'Take Photo'}
+                    {photoUris[q.question_id] ? 'Reprendre la photo' : 'Prendre une photo'}
                   </Text>
                 </TouchableOpacity>
               )}

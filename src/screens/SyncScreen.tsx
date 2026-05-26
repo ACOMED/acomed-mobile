@@ -168,9 +168,9 @@ export default function SyncScreen() {
             <View style={{ flex: 1 }}>
               <Text style={[styles.queueQuestion, { color: theme.text }]}>Q: {item.questionId}</Text>
               <Text style={[styles.queueAudit, { color: theme.text2 }]}>Audit: {item.auditId.slice(0, 8)}...</Text>
-              <Text style={styles.queueTime}>{item.updatedAt}</Text>
+              <Text style={styles.queueTime}>{item.updated_at}</Text>
             </View>
-            <View style={styles.queueDot} />
+            <View style={[styles.queueDot, { backgroundColor: item.synced ? '#22c55e' : '#f59e0b' }]} />
           </View>
         ))}
 

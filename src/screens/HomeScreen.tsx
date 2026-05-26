@@ -205,7 +205,7 @@ const styles = StyleSheet.create({
   },
   dateRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   dateText: { fontSize: 12, color: '#8a8f9e' },
-  actionLink: { fontSize: 13, fontWeight: '600', color: '#0d1b3e' },
+  actionLink: { fontSize: 13, fontWeight: '600', color: Colors.green },
 
   // Error / empty
   errorBox: {
