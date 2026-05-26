@@ -18,7 +18,6 @@ import * as authService from '../services/authService';
 import CameraModal from '../components/CameraModal';
 import SubmitModal from '../components/SubmitModal';
 
-const FALLBACK_TEMPLATE_ID = '10ed2d2b-b2e7-468e-b647-6d991c341535';
 
 // ── Pure graph helpers (no component state) ───────────────────────────────────
 
@@ -123,10 +122,15 @@ export default function ChecklistScreen({ route, navigation }: any) {
       audit.responses?.forEach((a: any) => { initial[a.question_id] = a.answer_value; });
       setResponses(initial);
 
+      if (!audit.template_id) {
+        setError('Aucun template assigné à cet audit.');
+        setLoading(false);
+        return;
+      }
+
       let template;
       try {
-        const templateId = audit.template_id ?? FALLBACK_TEMPLATE_ID;
-        template = await fetchTemplate(templateId);
+        template = await fetchTemplate(audit.template_id);
       } catch (e) {
         setError('Failed to load checklist questions. Please try again.');
         setLoading(false);
@@ -227,7 +231,7 @@ export default function ChecklistScreen({ route, navigation }: any) {
     try {
       const token = await authService.getToken();
       await setLocalAuditStatus(auditId, 'soumis');
-      await fetch(`https://api.acomed.tech/api/audits/${auditId}`, {
+      await fetch(`https://api.acomed.tech/api/audits/${auditId}/status`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',

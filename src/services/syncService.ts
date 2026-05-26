@@ -173,6 +173,7 @@ export async function sync(): Promise<void> {
       pending.some((p) => p._key === e._key) ? { ...e, synced: true } : e
     );
     await writeQueue(updated);
+    await AsyncStorage.removeItem('cache_audits');
     console.log(`[syncService] sync() — ${pending.length} item(s) synced successfully.`);
   } catch (err) {
     console.error('[syncService] sync() — network error:', err);

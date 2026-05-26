@@ -5,6 +5,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect } from '@react-navigation/native';
 import { useTheme, DarkColors, LightColors } from '../theme/ThemeContext';
 import { fetchAudits, Audit } from '../services/auditService';
@@ -24,13 +25,18 @@ export default function ReportScreen({ navigation }: any) {
 
   useFocusEffect(
     useCallback(() => {
+      async function loadAudits() {
+        await AsyncStorage.removeItem('cache_audits');
+        try {
+          const all = await fetchAudits();
+          setAudits(all.filter((a) => a.status === 'soumis'));
+        } catch (err: any) {
+          setError(err.message ?? 'Failed to load reports.');
+        }
+      }
       setLoading(true);
       setError(null);
-      fetchAudits()
-        .then(mergeAuditStatuses)
-        .then((all) => setAudits(all.filter((a) => a.status === 'soumis')))
-        .catch((err) => setError(err.message ?? 'Failed to load reports.'))
-        .finally(() => setLoading(false));
+      loadAudits().finally(() => setLoading(false));
     }, [])
   );
 
