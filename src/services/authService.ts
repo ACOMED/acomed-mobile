@@ -1,11 +1,11 @@
 // authService.ts
 // Handles authentication against the ACOMED backend.
 //
-// AsyncStorage keys:
+// SecureStore keys:
 //   acomed_token  → JWT string
 //   acomed_user   → serialised User object
 
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as SecureStore from 'expo-secure-store';
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -81,8 +81,8 @@ export async function login(email: string, password: string): Promise<LoginResul
   };
 
   await Promise.all([
-    AsyncStorage.setItem(TOKEN_KEY, token),
-    AsyncStorage.setItem(USER_KEY, JSON.stringify(normalizedUser)),
+    SecureStore.setItemAsync(TOKEN_KEY, token),
+    SecureStore.setItemAsync(USER_KEY, JSON.stringify(normalizedUser)),
   ]);
 
   console.log('[authService] Login successful for', normalizedUser.email);
@@ -93,7 +93,7 @@ export async function login(email: string, password: string): Promise<LoginResul
  */
 export async function getToken(): Promise<string | null> {
   try {
-    return await AsyncStorage.getItem(TOKEN_KEY);
+    return await SecureStore.getItemAsync(TOKEN_KEY);
   } catch (err) {
     console.error('[authService] getToken failed:', err);
     return null;
@@ -105,7 +105,7 @@ export async function getToken(): Promise<string | null> {
  */
 export async function getUser(): Promise<AuthUser | null> {
   try {
-    const raw = await AsyncStorage.getItem(USER_KEY);
+    const raw = await SecureStore.getItemAsync(USER_KEY);
     return raw ? (JSON.parse(raw) as AuthUser) : null;
   } catch (err) {
     console.error('[authService] getUser failed:', err);
@@ -127,7 +127,10 @@ export async function isAuthenticated(): Promise<boolean> {
  */
 export async function logout(): Promise<void> {
   try {
-    await AsyncStorage.multiRemove([TOKEN_KEY, USER_KEY]);
+    await Promise.all([
+      SecureStore.deleteItemAsync(TOKEN_KEY),
+      SecureStore.deleteItemAsync(USER_KEY),
+    ]);
     console.log('[authService] Logged out — local session cleared.');
   } catch (err) {
     console.error('[authService] logout failed:', err);

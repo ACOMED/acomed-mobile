@@ -9,6 +9,7 @@
 // existing entry rather than appending a duplicate.
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as SecureStore from 'expo-secure-store';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -139,7 +140,7 @@ export async function sync(): Promise<void> {
     return;
   }
 
-  const token = await AsyncStorage.getItem('acomed_token');
+  const token = await SecureStore.getItemAsync('acomed_token');
   if (!token) {
     console.warn('[syncService] sync() — no auth token, skipping.');
     return;

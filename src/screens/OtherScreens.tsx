@@ -9,6 +9,7 @@ import { MOCK_ISSUES } from '../mocks/data';
 import { useTheme, DarkColors, LightColors } from '../theme/ThemeContext';
 
 import * as authService from '../services/authService';
+import { fetchAudits } from '../services/auditService';
 
 
 
@@ -97,9 +98,14 @@ export function ProfileScreen({ navigation }: any) {
   const { isDark, toggleTheme } = useTheme();
   const theme = isDark ? DarkColors : LightColors;
   const [user, setUser] = React.useState<any>(null);
+  const [audits, setAudits] = React.useState<any[] | null>(null);
 
   React.useEffect(() => {
     authService.getUser().then(setUser);
+  }, []);
+
+  React.useEffect(() => {
+    fetchAudits().then(setAudits).catch(() => {});
   }, []);
 
   const initials = user?.full_name
@@ -140,16 +146,22 @@ export function ProfileScreen({ navigation }: any) {
         {/* ── STATS GRID ── */}
         <View style={[styles.statsGrid, { backgroundColor: theme.background }]}>
           <View style={[styles.statCard, { backgroundColor: theme.white }]}>
-            <Text style={[styles.statVal, { color: theme.text }]}>—</Text>
+            <Text style={[styles.statVal, { color: theme.text }]}>
+              {audits !== null ? audits.length : '—'}
+            </Text>
             <Text style={[styles.statLbl, { color: theme.text2 }]}>Total audits</Text>
           </View>
           <View style={[styles.statCard, { backgroundColor: theme.white }]}>
-            <Text style={[styles.statVal, { color: theme.text }]}>—</Text>
-            <Text style={[styles.statLbl, { color: theme.text2 }]}>Conformité moy.</Text>
+            <Text style={[styles.statVal, { color: theme.text }]}>
+              {audits !== null ? audits.filter((a: any) => a.status === 'soumis').length : '—'}
+            </Text>
+            <Text style={[styles.statLbl, { color: theme.text2 }]}>Audits soumis</Text>
           </View>
           <View style={[styles.statCard, { backgroundColor: theme.white }]}>
-            <Text style={[styles.statVal, { color: theme.text }]}>—</Text>
-            <Text style={[styles.statLbl, { color: theme.text2 }]}>Ce trimestre</Text>
+            <Text style={[styles.statVal, { color: theme.text }]}>
+              {audits !== null ? audits.filter((a: any) => a.status === 'brouillon' || a.status === 'en cours').length : '—'}
+            </Text>
+            <Text style={[styles.statLbl, { color: theme.text2 }]}>En cours</Text>
           </View>
           <View style={[styles.statCard, { backgroundColor: theme.white }]}>
             <Text style={[styles.statVal, { fontSize: 16, color: theme.text }]}>{user?.role || 'Inspector'}</Text>
