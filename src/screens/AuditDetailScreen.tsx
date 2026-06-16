@@ -1,19 +1,46 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
-  View, Text, ScrollView, TouchableOpacity, StyleSheet, Platform,
+  View, Text, ScrollView, TouchableOpacity, StyleSheet,
+  Platform, ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../theme/colors';
-import { MOCK_AUDITS } from '../mocks/data';
 import { useTheme, DarkColors, LightColors } from '../theme/ThemeContext';
+import { fetchAudit, AuditDetail } from '../services/auditService';
+import { setLocalAuditStatus, getLocalAuditStatus } from '../services/auditStatusService';
+
+function fmtScore(val: number | null): string {
+  return val !== null && val !== undefined ? `${val}%` : '—';
+}
 
 export default function AuditDetailScreen({ route, navigation }: any) {
   const { isDark } = useTheme();
   const theme = isDark ? DarkColors : LightColors;
 
-  const { auditId } = route.params;
-  const audit = MOCK_AUDITS.find(a => a.id === auditId) || MOCK_AUDITS[0];
+  const { auditId } = route.params as { auditId: string };
+
+  const [audit, setAudit] = useState<AuditDetail | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetchAudit(auditId)
+      .then(async (fetched) => {
+        const local = await getLocalAuditStatus(auditId);
+        setAudit(local ? { ...fetched, status: local } : fetched);
+      })
+      .catch((err) => setError(err.message ?? 'Impossible de charger l\'audit.'))
+      .finally(() => setLoading(false));
+  }, [auditId]);
+
+  function getStatusPill(status: string): { borderColor: string; color: string; label: string } {
+    if (status === 'en cours')  return { borderColor: '#185fa5', color: '#185fa5', label: 'EN COURS'  };
+    if (status === 'soumis')    return { borderColor: '#1A6B4A', color: '#1A6B4A', label: 'SOUMIS'    };
+    if (status === 'cloture')   return { borderColor: '#8a8f9e', color: '#8a8f9e', label: 'CLÔTURÉ'   };
+    if (status === 'planifie')  return { borderColor: '#7c3aed', color: '#7c3aed', label: 'PLANIFIÉ'  };
+    return { borderColor: '#b45309', color: '#b45309', label: 'ASSIGNÉ' };
+  }
 
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: theme.background, paddingTop: Platform.OS === 'android' ? 35 : 0 }]}>
@@ -23,176 +50,168 @@ export default function AuditDetailScreen({ route, navigation }: any) {
         <TouchableOpacity onPress={() => navigation.goBack()}>
           <Text style={[styles.backBtn, { color: theme.text }]}>‹</Text>
         </TouchableOpacity>
-        <Text style={[styles.topBarTitle, { color: theme.text }]}>Audit Detail</Text>
-        <View style={[styles.offlineBadge, { backgroundColor: isDark ? '#1E293B' : Colors.grayLight, borderColor: theme.borderColor }]}>
-          <Text style={[styles.offlineText, { color: theme.text2 }]}>OFFLINE</Text>
-        </View>
+        <Text style={[styles.topBarTitle, { color: theme.text }]}>Détail de l'audit</Text>
+        <View style={{ width: 28 }} />
       </View>
 
-      <ScrollView style={styles.body} showsVerticalScrollIndicator={false}>
-
-        {/* ── HOSPITAL INFO CARD ── */}
-        <View style={[styles.card, { backgroundColor: theme.cardBg, borderColor: theme.borderColor }]}>
-          <View style={styles.hospitalRow}>
-            <View style={[styles.hospitalIcon, { backgroundColor: isDark ? '#1E293B' : Colors.grayLight }]}>
-              <Ionicons name="business-outline" size={26} color={Colors.green} />
-            </View>
-            <View style={{ flex: 1 }}>
-              <View style={styles.levelTag}>
-                <Text style={styles.levelTagText}>Level II Regional</Text>
-              </View>
-              <Text style={[styles.hospitalName, { color: theme.text }]}>{audit.hospitalName}</Text>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 3 }}>
-                <Ionicons name="location-outline" size={12} color={theme.text2} />
-                <Text style={[styles.hospitalLocation, { color: theme.text2 }]}>{audit.location}</Text>
-              </View>
-            </View>
-          </View>
-          <View style={styles.infoGrid}>
-            <View style={[styles.infoCell, { backgroundColor: isDark ? '#1E293B' : Colors.grayLight }]}>
-              <Text style={[styles.infoCellLabel, { color: theme.text3 }]}>CONTACT</Text>
-              <Text style={[styles.infoCellValue, { color: theme.text }]}>+212 535-5211</Text>
-            </View>
-            <View style={[styles.infoCell, { backgroundColor: isDark ? '#1E293B' : Colors.grayLight }]}>
-              <Text style={[styles.infoCellLabel, { color: theme.text3 }]}>UPDATED</Text>
-              <Text style={[styles.infoCellValue, { color: theme.text }]}>Oct 24, 2024</Text>
-            </View>
-          </View>
+      {loading ? (
+        <View style={styles.centered}>
+          <ActivityIndicator size="large" color={Colors.green} />
         </View>
-
-        {/* ── PROGRESS CARD ── */}
-        <View style={[styles.card, { backgroundColor: theme.cardBg, borderColor: theme.borderColor }]}>
-          <View style={styles.progressHeader}>
-            <Text style={[styles.progressTitle, { color: theme.text }]}>Audit Progress</Text>
-            <Text style={styles.progressPct}>{audit.progress}%</Text>
-          </View>
-          <View style={[styles.progressWrap, { backgroundColor: theme.borderColor }]}>
-            <View style={[styles.progressFill, { width: `${audit.progress}%` as any }]} />
-          </View>
-          <View style={styles.progressFooter}>
-            <View>
-              <Text style={[styles.progressBig, { color: theme.text }]}>{audit.checkedItems} / {audit.totalItems}</Text>
-              <Text style={[styles.progressSub, { color: theme.text2 }]}>Items Checked</Text>
-            </View>
-            <View style={{ alignItems: 'flex-end' }}>
-              <Text style={[styles.progressBig, { color: theme.text }]}>In Progress</Text>
-              <Text style={[styles.progressSub, { color: theme.text2 }]}>Status</Text>
-            </View>
-          </View>
+      ) : error ? (
+        <View style={styles.centered}>
+          <Ionicons name="alert-circle-outline" size={32} color={Colors.red} />
+          <Text style={[styles.errorText, { color: Colors.red }]}>{error}</Text>
         </View>
+      ) : audit ? (
+        <ScrollView style={styles.body} showsVerticalScrollIndicator={false}>
 
-        {/* ── ISSUES BANNER ── */}
-        {audit.issuesCount > 0 && (
-          <TouchableOpacity
-            style={styles.issuesBanner}
-            onPress={() => navigation.navigate('Issues')}
-          >
-            <View style={styles.issuesLeft}>
-              <View style={styles.issuesIcon}>
-                <Ionicons name="warning" size={18} color={Colors.red} />
+          {/* ── FACILITY CARD ── */}
+          <View style={[styles.card, { backgroundColor: theme.white, borderColor: theme.borderColor }]}>
+            <Text style={[styles.facilityName, { color: theme.text }]} numberOfLines={2}>
+              {audit.facility_name || audit.facility}
+            </Text>
+            <View style={styles.metaRow}>
+              <Text style={[styles.refText, { color: theme.text2 }]}>{audit.code}</Text>
+              <View style={[styles.metaSep, { backgroundColor: theme.borderColor }]} />
+              {(() => {
+                const pill = getStatusPill(audit.status);
+                return (
+                  <View style={[styles.statusPill, { borderColor: pill.borderColor }]}>
+                    <Text style={[styles.statusPillText, { color: pill.color }]}>{pill.label}</Text>
+                  </View>
+                );
+              })()}
+            </View>
+          </View>
+
+          {/* ── SCORES CARD ── */}
+          <View style={[styles.card, { backgroundColor: theme.white, borderColor: theme.borderColor }]}>
+            <View style={styles.scoresRow}>
+              <View style={styles.scoreItem}>
+                <View style={styles.scoreLabelRow}>
+                  <Ionicons name="bar-chart-outline" size={13} color={theme.text2} />
+                  <Text style={[styles.scoreLbl, { color: theme.text2 }]}>Conformité</Text>
+                </View>
+                <Text style={[styles.scoreVal, { color: theme.text }]}>{fmtScore(audit.compliance_score)}</Text>
+              </View>
+              <View style={[styles.scoreDivider, { backgroundColor: theme.borderColor }]} />
+              <View style={styles.scoreItem}>
+                <View style={styles.scoreLabelRow}>
+                  <Ionicons name="trending-up-outline" size={13} color={theme.text2} />
+                  <Text style={[styles.scoreLbl, { color: theme.text2 }]}>Maturité</Text>
+                </View>
+                <Text style={[styles.scoreVal, { color: theme.text }]}>{fmtScore(audit.maturity_score)}</Text>
+              </View>
+            </View>
+          </View>
+
+          {/* ── INSPECTOR CARD ── */}
+          <View style={[styles.card, { backgroundColor: theme.white, borderColor: theme.borderColor }]}>
+            <View style={styles.infoRow}>
+              <View style={[styles.infoIconBox, { backgroundColor: theme.background }]}>
+                <Ionicons name="person-outline" size={16} color={theme.text2} />
               </View>
               <View>
-                <Text style={styles.issuesTitle}>Issues Detected</Text>
-                <Text style={styles.issuesSub}>{audit.issuesCount} non-conformities found</Text>
+                <Text style={[styles.infoLbl, { color: theme.text2 }]}>Inspecteur</Text>
+                <Text style={[styles.infoVal, { color: theme.text }]}>{audit.inspector_name || '—'}</Text>
               </View>
             </View>
-            <Text style={{ color: Colors.red, fontSize: 18 }}>›</Text>
+            <View style={[styles.infoRow, { borderTopWidth: 0.5, borderTopColor: theme.borderColor, paddingTop: 12, marginTop: 12 }]}>
+              <View style={[styles.infoIconBox, { backgroundColor: theme.background }]}>
+                <Ionicons name="calendar-outline" size={16} color={theme.text2} />
+              </View>
+              <View>
+                <Text style={[styles.infoLbl, { color: theme.text2 }]}>Date de visite</Text>
+                <Text style={[styles.infoVal, { color: theme.text }]}>{audit.date ?? '—'}</Text>
+              </View>
+            </View>
+          </View>
+
+          {/* ── ACTION BUTTON ── */}
+          <TouchableOpacity
+            style={styles.btnPrimary}
+            onPress={async () => {
+              if (audit.status !== 'soumis' && audit.status !== 'cloture') {
+                await setLocalAuditStatus(auditId, 'en cours');
+              }
+              navigation.navigate('Checklist', { auditId });
+            }}
+          >
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              <Ionicons name="clipboard-outline" size={18} color="#ffffff" />
+              <Text style={styles.btnPrimaryText}>
+                {audit.status === 'soumis' || audit.status === 'cloture'
+                  ? 'Voir les réponses ›'
+                  : audit.status === 'brouillon'
+                    ? 'Démarrer la checklist'
+                    : 'Continuer la checklist'}
+              </Text>
+            </View>
           </TouchableOpacity>
-        )}
 
-        {/* ── ACTION BUTTONS ── */}
-        <TouchableOpacity
-          style={styles.btnPrimary}
-          onPress={() => navigation.navigate('Checklist', { auditId: audit.id })}
-        >
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-            <Ionicons name="clipboard-outline" size={18} color={Colors.white} />
-            <Text style={styles.btnPrimaryText}>Continue Checklist</Text>
-          </View>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={[styles.btnOutline, { borderColor: Colors.green }]}
-          onPress={() => navigation.navigate('Issues')}
-        >
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-            <Ionicons name="warning-outline" size={16} color={Colors.green} />
-            <Text style={styles.btnOutlineText}>Non-Conformities</Text>
-          </View>
-        </TouchableOpacity>
-
-        <View style={{ height: 100 }} />
-      </ScrollView>
+          <View style={{ height: 100 }} />
+        </ScrollView>
+      ) : null}
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   safe: { flex: 1 },
+
+  // Top bar
   topBar: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     paddingHorizontal: 20, paddingVertical: 10,
-    borderBottomWidth: 1,
+    borderBottomWidth: 0.5,
   },
-  backBtn: { fontSize: 28, lineHeight: 32 },
-  topBarTitle: { fontSize: 17, fontWeight: '600' },
-  offlineBadge: {
-    borderWidth: 1, borderRadius: 20,
-    paddingHorizontal: 10, paddingVertical: 4,
-  },
-  offlineText: { fontSize: 11, fontWeight: '700' },
+  backBtn: { fontSize: 28, lineHeight: 32, color: '#0d1b3e' },
+  topBarTitle: { fontSize: 17, fontWeight: '600', color: '#0d1b3e' },
+
+  // States
+  centered: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12 },
+  errorText: { fontSize: 14, textAlign: 'center', paddingHorizontal: 32 },
   body: { flex: 1, padding: 16 },
+
+  // Cards
   card: {
-    borderRadius: 16, borderWidth: 1,
-    padding: 16, marginBottom: 14,
+    backgroundColor: '#ffffff',
+    borderWidth: 0.5, borderColor: '#dde0e8',
+    borderRadius: 14, padding: 16, marginBottom: 12,
+    shadowColor: '#0d1b3e', shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04, shadowRadius: 3, elevation: 1,
   },
-  hospitalRow: { flexDirection: 'row', gap: 12, alignItems: 'flex-start', marginBottom: 12 },
-  hospitalIcon: {
-    width: 52, height: 52, borderRadius: 12,
-    alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+
+  // Facility card
+  facilityName: { fontSize: 18, fontWeight: '600', color: '#0d1b3e', marginBottom: 10 },
+  metaRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  refText: { fontSize: 11, color: '#8a8f9e' },
+  metaSep: { width: 1, height: 12, backgroundColor: '#dde0e8' },
+  statusPill: { borderWidth: 1, borderRadius: 20, paddingHorizontal: 10, paddingVertical: 3 },
+  statusPillText: { fontSize: 11, fontWeight: '600' },
+
+  // Scores card
+  scoresRow: { flexDirection: 'row', alignItems: 'center' },
+  scoreItem: { flex: 1, alignItems: 'center' },
+  scoreLabelRow: { flexDirection: 'row', alignItems: 'center', gap: 5, marginBottom: 6 },
+  scoreLbl: { fontSize: 11, color: '#8a8f9e' },
+  scoreVal: { fontSize: 28, fontWeight: '600', color: '#0d1b3e' },
+  scoreDivider: { width: 1, height: 40, backgroundColor: '#dde0e8', marginHorizontal: 4 },
+
+  // Inspector card
+  infoRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  infoIconBox: {
+    width: 32, height: 32, borderRadius: 8,
+    backgroundColor: '#f5f6f9', alignItems: 'center', justifyContent: 'center',
   },
-  levelTag: {
-    backgroundColor: Colors.greenLight, borderRadius: 99,
-    paddingHorizontal: 8, paddingVertical: 2, alignSelf: 'flex-start', marginBottom: 4,
-  },
-  levelTagText: { fontSize: 11, fontWeight: '600', color: Colors.greenDark },
-  hospitalName: { fontSize: 18, fontWeight: '700', lineHeight: 22 },
-  hospitalLocation: { fontSize: 12 },
-  infoGrid: { flexDirection: 'row', gap: 8 },
-  infoCell: {
-    flex: 1, borderRadius: 10, padding: 10,
-  },
-  infoCellLabel: { fontSize: 10, fontWeight: '700', letterSpacing: 0.5, marginBottom: 2 },
-  infoCellValue: { fontSize: 13, fontWeight: '600' },
-  progressHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
-  progressTitle: { fontSize: 14, fontWeight: '600' },
-  progressPct: { fontSize: 22, fontWeight: '700', color: Colors.green },
-  progressWrap: { height: 10, borderRadius: 99, overflow: 'hidden', marginBottom: 12 },
-  progressFill: { height: '100%', backgroundColor: Colors.green, borderRadius: 99 },
-  progressFooter: { flexDirection: 'row', justifyContent: 'space-between' },
-  progressBig: { fontSize: 15, fontWeight: '700' },
-  progressSub: { fontSize: 12 },
-  issuesBanner: {
-    backgroundColor: '#FEF2F2', borderWidth: 1, borderColor: '#FECACA',
-    borderRadius: 14, padding: 14, marginBottom: 10,
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-  },
-  issuesLeft: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  issuesIcon: {
-    width: 36, height: 36, borderRadius: 18,
-    backgroundColor: '#FEE2E2', alignItems: 'center', justifyContent: 'center',
-  },
-  issuesTitle: { fontSize: 14, fontWeight: '700', color: Colors.red },
-  issuesSub:   { fontSize: 12, color: Colors.red },
+  infoLbl: { fontSize: 12, color: '#8a8f9e' },
+  infoVal: { fontSize: 14, fontWeight: '500', color: '#0d1b3e', marginTop: 1 },
+
+  // Action button
   btnPrimary: {
-    backgroundColor: Colors.green, borderRadius: 14,
+    backgroundColor: '#0d1b3e', borderRadius: 14,
     padding: 16, alignItems: 'center', marginBottom: 10,
   },
-  btnPrimaryText: { color: Colors.white, fontSize: 16, fontWeight: '600' },
-  btnOutline: {
-    backgroundColor: 'transparent', borderWidth: 1.5,
-    borderRadius: 14,
-    padding: 14, alignItems: 'center', marginBottom: 10,
-  },
-  btnOutlineText: { color: Colors.green, fontSize: 15, fontWeight: '600' },
+  btnPrimaryText: { color: '#ffffff', fontSize: 16, fontWeight: '600' },
 });

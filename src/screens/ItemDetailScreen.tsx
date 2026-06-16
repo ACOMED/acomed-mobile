@@ -1,18 +1,19 @@
 import React, { useState } from 'react';
 import {
-  View, Text, ScrollView, TouchableOpacity, StyleSheet, TextInput, Platform,
+  View, Text, ScrollView, TouchableOpacity, StyleSheet, TextInput, Platform, Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../theme/colors';
 import { MOCK_QUESTIONS } from '../mocks/data';
 import { useTheme, DarkColors, LightColors } from '../theme/ThemeContext';
+import { saveAnswer } from '../services/syncService';
 
 export default function ItemDetailScreen({ route, navigation }: any) {
   const { isDark } = useTheme();
   const theme = isDark ? DarkColors : LightColors;
 
-  const { questionId } = route.params;
+  const { questionId, auditId = 'unknown' } = route.params;
   const question = MOCK_QUESTIONS.find(q => q.id === questionId) || MOCK_QUESTIONS[0];
 
   const [selectedResponse, setSelectedResponse] = useState<'pass' | 'fail' | 'na' | null>(
@@ -141,7 +142,23 @@ export default function ItemDetailScreen({ route, navigation }: any) {
         {/* ── SAVE BUTTON ── */}
         <TouchableOpacity
           style={[styles.btnSave, !selectedResponse && { opacity: 0.5 }]}
-          onPress={() => { if (selectedResponse) navigation.goBack(); }}
+          onPress={async () => {
+            if (!selectedResponse) return;
+            try {
+              console.log('[ItemDetail] Saving answer...');
+              await saveAnswer(
+                auditId,
+                question.id,
+                selectedResponse,
+              );
+              console.log('[ItemDetail] Answer queued successfully');
+              Alert.alert('Saved', 'Response saved locally');
+              navigation.goBack();
+            } catch (error) {
+              console.error('[ItemDetail] Save error:', error);
+              Alert.alert('Error', 'Failed to save response');
+            }
+          }}
           disabled={!selectedResponse}
         >
           <Text style={styles.btnSaveText}>Save Assessment ›</Text>

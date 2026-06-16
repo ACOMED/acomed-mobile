@@ -1,53 +1,79 @@
-import React from 'react';
-import { View, Text } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, ActivityIndicator } from 'react-native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
+import NetInfo from '@react-native-community/netinfo';
 import { useTheme, DarkColors, LightColors } from '../theme/ThemeContext';
+import { isAuthenticated } from '../services/authService';
+import { sync } from '../services/syncService';
 
 // Import all screens
-import LoginScreen           from '../screens/LoginScreen';
-import HomeScreen            from '../screens/HomeScreen';
-import AuditDetailScreen     from '../screens/AuditDetailScreen';
-import ChecklistScreen       from '../screens/ChecklistScreen';
-import ItemDetailScreen      from '../screens/ItemDetailScreen';
-import { ProfileScreen }     from '../screens/OtherScreens';
-import SyncScreen            from '../screens/SyncScreen';
-import NotificationsScreen   from '../screens/NotificationsScreen';
+import LoginScreen            from '../screens/LoginScreen';
+import HomeScreen             from '../screens/HomeScreen';
+import AuditDetailScreen      from '../screens/AuditDetailScreen';
+import ChecklistScreen        from '../screens/ChecklistScreen';
+import ItemDetailScreen       from '../screens/ItemDetailScreen';
+import NonConformitiesScreen  from '../screens/NonConformitiesScreen';
+import { ProfileScreen }      from '../screens/OtherScreens';
+import SyncScreen             from '../screens/SyncScreen';
+import ReportScreen           from '../screens/ReportScreen';
+import AuditAnswersScreen     from '../screens/AuditAnswersScreen';
+import AuditsListScreen       from '../screens/AuditsListScreen';
 
-// ─── What this file does ─────────────────────────────────────────────────────
-// This is the navigation brain of the app.
-// Stack = screens that slide over each other (Login → Home → Detail)
-// Tabs  = bottom bar with Home, Notifications, Sync, Profile
-//
-// Structure:
-//   RootStack
-//   ├── Login (no tabs)
-//   └── MainTabs
-//       ├── Home tab          → HomeScreen (+ AuditDetail, Checklist, ItemDetail stack)
-//       ├── Notifications tab → NotificationsScreen (badge: 3)
-//       ├── Sync tab          → SyncScreen
-//       └── Profile tab       → ProfileScreen
+// ─── Navigation structure ─────────────────────────────────────────────────────
+// RootStack
+// ├── Login (no tabs)
+// └── MainTabs
+//     ├── Home tab    → HomeStackNavigator (Home → AuditDetail → Checklist …)
+//     ├── Audits tab  → HomeStackNavigator (same stack, separate instance)
+//     ├── Report tab  → ReportScreen
+//     ├── Sync tab    → SyncScreen
+//     └── Profile tab → ProfileScreen
 // ─────────────────────────────────────────────────────────────────────────────
 
-const ACTIVE_COLOR   = '#1A6B4A';
-const INACTIVE_COLOR = '#6B7280';
+const ACTIVE_COLOR   = '#0d1b3e';
+const INACTIVE_COLOR = '#8a8f9e';
 
-const NOTIFICATION_BADGE_COUNT = 3;
+const Stack      = createNativeStackNavigator();
+const Tab        = createBottomTabNavigator();
+const HomeStack  = createNativeStackNavigator();
+const AuditsStack = createNativeStackNavigator();
+const ReportStack = createNativeStackNavigator();
 
-const Stack     = createNativeStackNavigator();
-const Tab       = createBottomTabNavigator();
-const HomeStack = createNativeStackNavigator();
-
-// The stack inside the Home tab — allows navigating to audit detail, checklist, etc.
+// Stack inside the Home tab
 function HomeStackNavigator() {
   return (
     <HomeStack.Navigator screenOptions={{ headerShown: false }}>
-      <HomeStack.Screen name="Home"        component={HomeScreen} />
-      <HomeStack.Screen name="AuditDetail" component={AuditDetailScreen} />
-      <HomeStack.Screen name="Checklist"   component={ChecklistScreen} />
-      <HomeStack.Screen name="ItemDetail"  component={ItemDetailScreen} />
+      <HomeStack.Screen name="Home"             component={HomeScreen} />
+      <HomeStack.Screen name="AuditDetail"      component={AuditDetailScreen} />
+      <HomeStack.Screen name="Checklist"        component={ChecklistScreen} />
+      <HomeStack.Screen name="ItemDetail"       component={ItemDetailScreen} />
+      <HomeStack.Screen name="NonConformities"  component={NonConformitiesScreen} />
     </HomeStack.Navigator>
+  );
+}
+
+// Stack inside the Report tab — Reports list → AuditDetail → Checklist
+function ReportStackNavigator() {
+  return (
+    <ReportStack.Navigator screenOptions={{ headerShown: false }}>
+      <ReportStack.Screen name="ReportHome"     component={ReportScreen} />
+      <ReportStack.Screen name="AuditAnswers"   component={AuditAnswersScreen} />
+      <ReportStack.Screen name="AuditDetail"    component={AuditDetailScreen} />
+      <ReportStack.Screen name="Checklist"      component={ChecklistScreen} />
+    </ReportStack.Navigator>
+  );
+}
+
+// Stack inside the Audits tab — same screens, separate navigator instance
+function AuditsStackNavigator() {
+  return (
+    <AuditsStack.Navigator screenOptions={{ headerShown: false }}>
+      <AuditsStack.Screen name="AuditsList"  component={AuditsListScreen} />
+      <AuditsStack.Screen name="AuditDetail" component={AuditDetailScreen} />
+      <AuditsStack.Screen name="Checklist"   component={ChecklistScreen} />
+    </AuditsStack.Navigator>
   );
 }
 
@@ -67,8 +93,8 @@ function MainTabs() {
         tabBarStyle: {
           paddingTop: 6,
           backgroundColor: theme.white,
-          borderTopColor: theme.borderColor,
-          borderTopWidth: 1,
+          borderTopColor: '#dde0e8',
+          borderTopWidth: 0.5,
         },
       }}
     >
@@ -77,7 +103,7 @@ function MainTabs() {
         name="HomeTab"
         component={HomeStackNavigator}
         options={{
-          tabBarLabel: 'Home',
+          tabBarLabel: 'Accueil',
           tabBarIcon: ({ focused, size }) => (
             <Ionicons
               name={focused ? 'home' : 'home-outline'}
@@ -88,39 +114,34 @@ function MainTabs() {
         }}
       />
 
-      {/* ── NOTIFICATIONS (badge) ── */}
+      {/* ── AUDITS ── */}
       <Tab.Screen
-        name="Notifications"
-        component={NotificationsScreen}
+        name="AuditsTab"
+        component={AuditsStackNavigator}
         options={{
-          tabBarLabel: 'Notifications',
+          tabBarLabel: 'Audits',
           tabBarIcon: ({ focused, size }) => (
-            <View style={{ position: 'relative' }}>
-              <Ionicons
-                name={focused ? 'notifications' : 'notifications-outline'}
-                size={size}
-                color={focused ? ACTIVE_COLOR : INACTIVE_COLOR}
-              />
-              {/* Badge */}
-              <View
-                style={{
-                  position: 'absolute',
-                  top: -4,
-                  right: -6,
-                  backgroundColor: '#EF4444',
-                  borderRadius: 8,
-                  minWidth: 16,
-                  height: 16,
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  paddingHorizontal: 3,
-                }}
-              >
-                <Text style={{ color: '#FFFFFF', fontSize: 9, fontWeight: '700' }}>
-                  {NOTIFICATION_BADGE_COUNT}
-                </Text>
-              </View>
-            </View>
+            <Ionicons
+              name={focused ? 'document-text' : 'document-text-outline'}
+              size={size}
+              color={focused ? ACTIVE_COLOR : INACTIVE_COLOR}
+            />
+          ),
+        }}
+      />
+
+      {/* ── REPORT ── */}
+      <Tab.Screen
+        name="ReportTab"
+        component={ReportStackNavigator}
+        options={{
+          tabBarLabel: 'Rapports',
+          tabBarIcon: ({ focused, size }) => (
+            <Ionicons
+              name={focused ? 'bar-chart' : 'bar-chart-outline'}
+              size={size}
+              color={focused ? ACTIVE_COLOR : INACTIVE_COLOR}
+            />
           ),
         }}
       />
@@ -146,7 +167,7 @@ function MainTabs() {
         name="Profile"
         component={ProfileScreen}
         options={{
-          tabBarLabel: 'Profile',
+          tabBarLabel: 'Profil',
           tabBarIcon: ({ focused, size }) => (
             <Ionicons
               name={focused ? 'person' : 'person-outline'}
@@ -162,8 +183,41 @@ function MainTabs() {
 
 // Root navigator — Login is separate, no tab bar
 export default function AppNavigator() {
+  const [initialScreen, setInitialScreen] = useState<'Login' | 'MainTabs' | null>(null);
+
+  useEffect(() => {
+    isAuthenticated().then((authed) => {
+      setInitialScreen(authed ? 'MainTabs' : 'Login');
+    });
+  }, []);
+
+  useEffect(() => {
+    let wasOffline = false;
+    const unsubscribe = NetInfo.addEventListener((state) => {
+      const online = !!state.isConnected;
+      if (wasOffline && online) {
+        console.log('[AppNavigator] Reconnected — triggering sync');
+        sync();
+      }
+      wasOffline = !online;
+    });
+    return unsubscribe;
+  }, []);
+
+  // Blank loading view while AsyncStorage token check runs
+  if (initialScreen === null) {
+    return (
+      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#FFFFFF' }}>
+        <ActivityIndicator size="large" color="#0d1b3e" />
+      </View>
+    );
+  }
+
   return (
-    <Stack.Navigator screenOptions={{ headerShown: false }}>
+    <Stack.Navigator
+      initialRouteName={initialScreen}
+      screenOptions={{ headerShown: false }}
+    >
       <Stack.Screen name="Login"    component={LoginScreen} />
       <Stack.Screen name="MainTabs" component={MainTabs} />
     </Stack.Navigator>

@@ -12,6 +12,7 @@ import {
   Image,
 } from 'react-native';
 import { Colors } from '../theme/colors';
+import { login } from '../services/authService';
 
 // ─── LoginScreen ─────────────────────────────────────────────────────────────
 // Clean professional login — no emojis, ACOMED logo at top, green accents.
@@ -24,14 +25,23 @@ export default function LoginScreen({ navigation }: any) {
   const [idFocused, setIdFocused]         = useState(false);
   const [pwFocused, setPwFocused]         = useState(false);
   const [error, setError]                 = useState('');
+  const [loading, setLoading]             = useState(false);
 
-  function handleLogin() {
+  async function handleLogin() {
     if (!inspectorId || !password) {
-      setError('Please enter your Inspector ID and password.');
+      setError('Veuillez saisir votre identifiant inspecteur et votre mot de passe.');
       return;
     }
     setError('');
-    navigation.replace('MainTabs');
+    setLoading(true);
+    try {
+      await login(inspectorId, password);
+      navigation.replace('MainTabs');
+    } catch (err: any) {
+      setError(err.message || 'Échec de la connexion. Veuillez réessayer.');
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
@@ -61,15 +71,15 @@ export default function LoginScreen({ navigation }: any) {
 
           {/* ── LOGIN CARD ── */}
           <View style={styles.card}>
-            <Text style={styles.cardHeading}>Sign In</Text>
-            <Text style={styles.cardSub}>Access your inspector account</Text>
+            <Text style={styles.cardHeading}>Connexion</Text>
+            <Text style={styles.cardSub}>Accédez à votre compte inspecteur</Text>
 
             {/* Inspector ID */}
-            <Text style={styles.fieldLabel}>Inspector ID</Text>
+            <Text style={styles.fieldLabel}>Identifiant inspecteur</Text>
             <View style={[styles.inputWrap, idFocused && styles.inputWrapFocused]}>
               <TextInput
                 style={styles.input}
-                placeholder="e.g. MA-2024-88"
+                placeholder="ex. MA-2024-88"
                 placeholderTextColor="#9CA3AF"
                 value={inspectorId}
                 onChangeText={setInspectorId}
@@ -81,15 +91,15 @@ export default function LoginScreen({ navigation }: any) {
 
             {/* Password */}
             <View style={styles.passwordHeader}>
-              <Text style={styles.fieldLabel}>Password</Text>
+              <Text style={styles.fieldLabel}>Mot de passe</Text>
               <TouchableOpacity>
-                <Text style={styles.forgotText}>Forgot?</Text>
+                <Text style={styles.forgotText}>Oublié ?</Text>
               </TouchableOpacity>
             </View>
             <View style={[styles.inputWrap, pwFocused && styles.inputWrapFocused]}>
               <TextInput
                 style={[styles.input, { paddingRight: 52 }]}
-                placeholder="Enter password"
+                placeholder="Saisir le mot de passe"
                 placeholderTextColor="#9CA3AF"
                 value={password}
                 onChangeText={setPassword}
@@ -101,7 +111,7 @@ export default function LoginScreen({ navigation }: any) {
                 style={styles.eyeBtn}
                 onPress={() => setShowPassword(!showPassword)}
               >
-                <Text style={styles.eyeText}>{showPassword ? 'Hide' : 'Show'}</Text>
+                <Text style={styles.eyeText}>{showPassword ? 'Masquer' : 'Afficher'}</Text>
               </TouchableOpacity>
             </View>
 
@@ -109,16 +119,21 @@ export default function LoginScreen({ navigation }: any) {
             {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
             {/* Sign In Button */}
-            <TouchableOpacity style={styles.btnPrimary} onPress={handleLogin} activeOpacity={0.85}>
-              <Text style={styles.btnPrimaryText}>Sign In</Text>
+            <TouchableOpacity
+              style={[styles.btnPrimary, loading && { opacity: 0.6 }]}
+              onPress={handleLogin}
+              activeOpacity={0.85}
+              disabled={loading}
+            >
+              <Text style={styles.btnPrimaryText}>{loading ? 'Connexion en cours…' : 'Se connecter'}</Text>
             </TouchableOpacity>
 
             {/* Security note */}
-            <Text style={styles.secureText}>Encrypted secure connection enabled</Text>
+            <Text style={styles.secureText}>Connexion sécurisée et chiffrée</Text>
           </View>
 
           {/* ── FOOTER ── */}
-          <Text style={styles.footer}>Ministry of Health — Morocco</Text>
+          <Text style={styles.footer}>Ministère de la Santé — Maroc</Text>
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>

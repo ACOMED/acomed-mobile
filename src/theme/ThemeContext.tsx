@@ -35,21 +35,20 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
 // Dark and light color palettes
 export const LightColors = {
-  background: '#F9FAFB',
+  background: '#f9fafb',
   white: '#FFFFFF',
-  text: '#111827',
-  text2: '#6B7280',
-  text3: '#9CA3AF',
+  text: '#0d1b3e',        // navy instead of near-black
+  text2: '#8a8f9e',       // softer gray
+  text3: '#c0c4d0',       // very light gray
   cardBg: '#FFFFFF',
-  borderColor: '#E5E7EB',
+  borderColor: '#dde0e8', // softer border
 };
-
 export const DarkColors = {
-  background: '#0F172A',
-  white: '#1E293B',
-  text: '#F1F5F9',
-  text2: '#94A3B8',
-  text3: '#64748B',
-  cardBg: '#1E293B',
-  borderColor: '#334155',
+  background: '#0a0f1e',
+  white: '#141c2e',
+  text: '#ffffff',
+  text2: '#a0aec0',
+  text3: '#4a5568',
+  cardBg: '#141c2e',
+  borderColor: '#1e2a42',
 };

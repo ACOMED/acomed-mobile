@@ -8,6 +8,12 @@ import { Colors } from '../theme/colors';
 import { MOCK_ISSUES } from '../mocks/data';
 import { useTheme, DarkColors, LightColors } from '../theme/ThemeContext';
 
+import * as authService from '../services/authService';
+import { fetchAudits } from '../services/auditService';
+
+
+
+
 // ─────────────────────────────────────────────────────────────────────────────
 // IssuesScreen — dark-mode aware + Ionicons
 // ─────────────────────────────────────────────────────────────────────────────
@@ -87,112 +93,165 @@ export function IssuesScreen({ navigation }: any) {
 // ─────────────────────────────────────────────────────────────────────────────
 // ProfileScreen — dark-mode aware + Ionicons
 // ─────────────────────────────────────────────────────────────────────────────
+
 export function ProfileScreen({ navigation }: any) {
   const { isDark, toggleTheme } = useTheme();
   const theme = isDark ? DarkColors : LightColors;
+  const [user, setUser] = React.useState<any>(null);
+  const [audits, setAudits] = React.useState<any[] | null>(null);
+
+  React.useEffect(() => {
+    authService.getUser().then(setUser);
+  }, []);
+
+  React.useEffect(() => {
+    fetchAudits().then(setAudits).catch(() => {});
+  }, []);
+
+  const initials = user?.full_name
+    ? user.full_name.split(' ').filter(Boolean).slice(0, 2).map((w: string) => w[0].toUpperCase()).join('')
+    : null;
 
   return (
     <SafeAreaView style={[styles.profileSafe, { backgroundColor: theme.background, paddingTop: Platform.OS === 'android' ? 35 : 0 }]}>
 
-      {/* ── TEAL HEADER ── */}
-      <View style={styles.profileHeader}>
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Text style={{ color: 'white', fontSize: 28 }}>‹</Text>
-        </TouchableOpacity>
-        <Text style={styles.profileHeaderTitle}>My Profile</Text>
-        <View style={{ width: 28 }} />
+      {/* ── TOP BAR ── */}
+      <View style={[styles.profileTopBar, { backgroundColor: theme.white, borderBottomColor: theme.borderColor }]}>
+        <View>
+          <Text style={[styles.profileTopLabel, { color: theme.text2 }]}>ACOMED</Text>
+          <Text style={[styles.profileTopTitle, { color: theme.text }]}>Profil</Text>
+        </View>
+        <Ionicons name="settings-outline" size={20} color={theme.text2} />
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false}>
 
-        {/* ── AVATAR SECTION ── */}
-        <View style={styles.avatarSection}>
-          <View style={styles.avatarCircle}>
-            <Ionicons name="person" size={38} color={Colors.teal} />
+        {/* ── AVATAR HERO ── */}
+        <View style={[styles.avatarHero, { backgroundColor: theme.white, borderBottomColor: theme.borderColor }]}>
+          <View style={[styles.avatarCircle, { borderColor: theme.borderColor }]}>
+            {initials ? (
+              <Text style={[styles.avatarInitials, { color: theme.text }]}>{initials}</Text>
+            ) : (
+              <Ionicons name="person" size={30} color={theme.text2} />
+            )}
+            <View style={styles.avatarOnlineDot} />
           </View>
-          <Text style={styles.profileName}>Mohamed Ouazzag</Text>
-          <Text style={styles.profileInspectorId}>Inspector ID: #44021</Text>
-          <Text style={styles.profileRegion}>Region: Zone 4</Text>
+          <Text style={[styles.profileName, { color: theme.text }]}>{user?.full_name || '—'}</Text>
+          <Text style={[styles.profileRole, { color: theme.text2 }]}>Inspecteur sanitaire — Ministère de la Santé</Text>
+          <View style={styles.idPill}>
+            <Text style={styles.idPillText}>ID : {user?.id?.slice(0, 8) || '—'}</Text>
+          </View>
         </View>
 
-        <View style={{ padding: 16 }}>
-
-          {/* ── ACCOUNT INFORMATION ── */}
-          <Text style={[styles.sectionLabel, { color: theme.text2 }]}>ACCOUNT INFORMATION</Text>
-          <View style={[styles.infoCard, { backgroundColor: theme.cardBg, borderColor: theme.borderColor }]}>
-            <InfoRow icon="mail-outline" label="Email" value="m.ouazzag@sante.gov.ma" valueColor={Colors.teal} theme={theme} />
-            <InfoRow icon="call-outline" label="Phone" value="+212 661-234-567" theme={theme} />
-            <InfoRow icon="business-outline" label="Department" value="Infrastructure & Safety" theme={theme} />
-            <InfoRow icon="person-outline" label="Role" value="Field Inspector" isLast theme={theme} />
+        {/* ── STATS GRID ── */}
+        <View style={[styles.statsGrid, { backgroundColor: theme.background }]}>
+          <View style={[styles.statCard, { backgroundColor: theme.white }]}>
+            <Text style={[styles.statVal, { color: theme.text }]}>
+              {audits !== null ? audits.length : '—'}
+            </Text>
+            <Text style={[styles.statLbl, { color: theme.text2 }]}>Total audits</Text>
           </View>
-
-          {/* ── DEVICE STATUS ── */}
-          <Text style={[styles.sectionLabel, { color: theme.text2 }]}>DEVICE STATUS</Text>
-          <View style={[styles.infoCard, { backgroundColor: theme.cardBg, borderColor: theme.borderColor }]}>
-            <InfoRow icon="sync-outline" label="Last Sync" value="Oct 24, 09:41 AM" theme={theme} />
-            <InfoRow icon="clipboard-outline" label="Pending Audits" value="12 Pending" valueBg={Colors.orangeLight} valueColor="#92400E" theme={theme} />
-            <InfoRow icon="save-outline" label="Offline Data" value="142.5 MB" isLast theme={theme} />
+          <View style={[styles.statCard, { backgroundColor: theme.white }]}>
+            <Text style={[styles.statVal, { color: theme.text }]}>
+              {audits !== null ? audits.filter((a: any) => a.status === 'soumis').length : '—'}
+            </Text>
+            <Text style={[styles.statLbl, { color: theme.text2 }]}>Audits soumis</Text>
           </View>
+          <View style={[styles.statCard, { backgroundColor: theme.white }]}>
+            <Text style={[styles.statVal, { color: theme.text }]}>
+              {audits !== null ? audits.filter((a: any) => a.status === 'brouillon' || a.status === 'en cours').length : '—'}
+            </Text>
+            <Text style={[styles.statLbl, { color: theme.text2 }]}>En cours</Text>
+          </View>
+          <View style={[styles.statCard, { backgroundColor: theme.white }]}>
+            <Text style={[styles.statVal, { fontSize: 16, color: theme.text }]}>{user?.role || 'Inspector'}</Text>
+            <Text style={[styles.statLbl, { color: theme.text2 }]}>Role</Text>
+          </View>
+        </View>
 
-          {/* ── PREFERENCES ── */}
-          <Text style={[styles.sectionLabel, { color: theme.text2 }]}>PREFERENCES</Text>
-          <View style={[styles.infoCard, { backgroundColor: theme.cardBg, borderColor: theme.borderColor }]}>
-            <View style={[styles.infoRow, { borderBottomWidth: 0 }]}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+        {/* ── ACCOUNT DETAILS ── */}
+        <Text style={[styles.profileSectionLabel, { color: theme.text2 }]}>Account details</Text>
+        <View style={[styles.profileCard, { borderColor: theme.borderColor, backgroundColor: theme.white }]}>
+          <InfoRow icon="mail-outline" label="Email" value={user?.email || '—'} theme={theme} />
+          <InfoRow icon="person-outline" label="Role" value={user?.role || '—'} isLast theme={theme} />
+        </View>
+
+        {/* ── PREFERENCES ── */}
+        <Text style={[styles.profileSectionLabel, { color: theme.text2 }]}>Preferences</Text>
+        <View style={[styles.profileCard, { borderColor: theme.borderColor, backgroundColor: theme.white }]}>
+          {/* Dark mode row */}
+          <View style={[styles.prefRow, { borderBottomColor: theme.borderColor }]}>
+            <View style={styles.prefLeft}>
+              <View style={[styles.prefIconBox, { backgroundColor: theme.background }]}>
                 <Ionicons name="moon-outline" size={16} color={theme.text2} />
-                <Text style={[styles.infoRowLabel, { color: theme.text2 }]}>Dark Mode</Text>
               </View>
-              <Switch
-                value={isDark}
-                onValueChange={toggleTheme}
-                trackColor={{ false: '#E5E7EB', true: Colors.green }}
-                thumbColor="#FFFFFF"
-              />
+              <View>
+                <Text style={[styles.prefLabel, { color: theme.text }]}>Mode sombre</Text>
+                <Text style={[styles.prefSub, { color: theme.text2 }]}>Light / Dark</Text>
+              </View>
             </View>
+            <Switch
+              value={isDark}
+              onValueChange={toggleTheme}
+              trackColor={{ false: '#E5E7EB', true: Colors.green }}
+              thumbColor="#FFFFFF"
+            />
           </View>
-
-          {/* ── SIGN OUT ── */}
-          <TouchableOpacity
-            style={styles.signOutBtn}
-            onPress={() => navigation.replace('Login')}
-          >
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-              <Ionicons name="log-out-outline" size={18} color={Colors.white} />
-              <Text style={styles.signOutText}>Sign Out</Text>
+          {/* Language row */}
+          <View style={[styles.prefRow, { borderBottomWidth: 0 }]}>
+            <View style={styles.prefLeft}>
+              <View style={[styles.prefIconBox, { backgroundColor: theme.background }]}>
+                <Ionicons name="language-outline" size={16} color={theme.text2} />
+              </View>
+              <View>
+                <Text style={[styles.prefLabel, { color: theme.text }]}>Language</Text>
+                <Text style={[styles.prefSub, { color: theme.text2 }]}>Français</Text>
+              </View>
             </View>
-          </TouchableOpacity>
-
-          <Text style={[styles.appVersion, { color: theme.text3 }]}>APP VERSION 4.2.1-STABLE</Text>
+            <Ionicons name="chevron-forward" size={16} color={theme.text3} />
+          </View>
         </View>
+
+        {/* ── SIGN OUT ── */}
+        <TouchableOpacity
+          style={styles.signOutBtn}
+          onPress={async () => {
+            await authService.logout();
+            navigation.replace('Login');
+          }}
+        >
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            <Ionicons name="log-out-outline" size={18} color="#991b1b" />
+            <Text style={styles.signOutText}>Déconnexion</Text>
+          </View>
+        </TouchableOpacity>
+
+        <Text style={styles.appVersion}>ACOMED v1.0.0 — Ministère de la Santé du Maroc</Text>
       </ScrollView>
     </SafeAreaView>
   );
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// InfoRow — theme-aware row with Ionicon prefix
+// InfoRow — icon box left, label+value stack middle, chevron right
 // ─────────────────────────────────────────────────────────────────────────────
-function InfoRow({ icon, label, value, isLast, valueColor, valueBg, theme }: any) {
+function InfoRow({ icon, label, value, isLast, theme }: any) {
   return (
     <View style={[
       styles.infoRow,
-      { borderBottomColor: theme.borderColor },
       isLast && { borderBottomWidth: 0 },
+      { borderBottomColor: theme?.borderColor },
     ]}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-        <Ionicons name={icon} size={16} color={theme.text2} />
-        <Text style={[styles.infoRowLabel, { color: theme.text2 }]}>{label}</Text>
+      <View style={styles.infoLeft}>
+        <View style={[styles.infoIconBox, { backgroundColor: theme?.background }]}>
+          <Ionicons name={icon} size={16} color={theme?.text2 || '#8a8f9e'} />
+        </View>
+        <View>
+          <Text style={[styles.infoLabel, { color: theme?.text2 }]}>{label}</Text>
+          <Text style={[styles.infoValue, { color: theme?.text }]}>{value}</Text>
+        </View>
       </View>
-      <View style={valueBg ? [styles.valuePill, { backgroundColor: valueBg }] : null}>
-        <Text style={[
-          styles.infoRowValue,
-          { color: theme.text },
-          valueColor && { color: valueColor },
-          valueBg && { fontWeight: '700', fontSize: 12 },
-        ]}>
-          {value}
-        </Text>
-      </View>
+      <Ionicons name="chevron-forward" size={16} color={theme?.text3 || '#c0c4d0'} />
     </View>
   );
 }
@@ -244,46 +303,111 @@ const styles = StyleSheet.create({
 
   // ── ProfileScreen ──
   profileSafe: { flex: 1 },
-  profileHeader: {
-    backgroundColor: Colors.teal,
-    flexDirection: 'row', alignItems: 'center',
-    justifyContent: 'space-between', padding: 14,
+
+  // Top bar
+  profileTopBar: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingHorizontal: 20, paddingTop: 12, paddingBottom: 16,
+    borderBottomWidth: 0.5, borderBottomColor: '#dde0e8',
   },
-  profileHeaderTitle: { fontSize: 17, fontWeight: '600', color: 'white' },
-  avatarSection: {
-    backgroundColor: Colors.teal, alignItems: 'center', paddingBottom: 24,
+  profileTopLabel: {
+    fontSize: 11, fontWeight: '500', color: '#8a8f9e',
+    letterSpacing: 0.08, textTransform: 'uppercase', marginBottom: 2,
+  },
+  profileTopTitle: { fontSize: 22, fontWeight: '500', color: '#0d1b3e' },
+
+  // Avatar hero
+  avatarHero: {
+    alignItems: 'center', paddingVertical: 24,
+    borderBottomWidth: 0.5, borderBottomColor: '#dde0e8',
   },
   avatarCircle: {
-    width: 80, height: 80, borderRadius: 40,
-    backgroundColor: '#E0F2FE', borderWidth: 3,
-    borderColor: 'rgba(255,255,255,0.4)',
-    alignItems: 'center', justifyContent: 'center', marginBottom: 10,
+    width: 72, height: 72, borderRadius: 36,
+    backgroundColor: '#e8eaf0', borderWidth: 2, borderColor: '#dde0e8',
+    alignItems: 'center', justifyContent: 'center', marginBottom: 14,
   },
-  profileName: { fontSize: 20, fontWeight: '700', color: 'white' },
-  profileInspectorId: { fontSize: 13, color: 'rgba(255,255,255,0.8)', marginTop: 2 },
-  profileRegion: { fontSize: 12, color: 'rgba(255,255,255,0.7)', marginTop: 2 },
-  sectionLabel: {
-    fontSize: 11, fontWeight: '700', letterSpacing: 0.7,
-    marginBottom: 10, marginTop: 4,
+  avatarInitials: { fontSize: 24, fontWeight: '500', color: '#0d1b3e' },
+  avatarOnlineDot: {
+    position: 'absolute', bottom: 0, right: 0,
+    width: 20, height: 20, borderRadius: 10,
+    backgroundColor: '#22c55e', borderWidth: 2, borderColor: '#ffffff',
   },
-  infoCard: {
-    borderRadius: 14, borderWidth: 1, marginBottom: 16,
+  profileName: { fontSize: 20, fontWeight: '500', color: '#0d1b3e', marginBottom: 4 },
+  profileRole: { fontSize: 13, color: '#8a8f9e', marginBottom: 10 },
+  idPill: {
+    flexDirection: 'row', gap: 6,
+    borderWidth: 1, borderColor: '#b5d4f4',
+    backgroundColor: '#e6f1fb',
+    paddingHorizontal: 12, paddingVertical: 4,
+    borderRadius: 20,
   },
+  idPillText: { fontSize: 12, fontWeight: '500', color: '#185fa5' },
+
+  // Stats grid
+  statsGrid: {
+    flexDirection: 'row', flexWrap: 'wrap', gap: 10,
+    padding: 16, backgroundColor: '#f9fafb',
+  },
+  statCard: {
+    width: '47%', backgroundColor: '#f5f6f9',
+    borderRadius: 10, padding: 14, alignItems: 'center',
+  },
+  statVal: { fontSize: 22, fontWeight: '500', color: '#0d1b3e' },
+  statLbl: { fontSize: 11, color: '#8a8f9e', marginTop: 4, textAlign: 'center' },
+
+  // Section label
+  profileSectionLabel: {
+    fontSize: 11, fontWeight: '500', color: '#8a8f9e',
+    letterSpacing: 0.07, textTransform: 'uppercase',
+    paddingHorizontal: 20, paddingTop: 20, paddingBottom: 8,
+  },
+
+  // Info card
+  profileCard: {
+    marginHorizontal: 16, marginBottom: 16,
+    borderWidth: 0.5, borderRadius: 14, overflow: 'hidden',
+  },
+
+  // InfoRow
   infoRow: {
-    flexDirection: 'row', justifyContent: 'space-between',
-    alignItems: 'center', padding: 12, paddingHorizontal: 16,
-    borderBottomWidth: 1,
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingVertical: 13, paddingHorizontal: 16,
+    borderBottomWidth: 0.5, borderBottomColor: '#eef0f5',
   },
-  infoRowLabel: { fontSize: 13 },
-  infoRowValue: { fontSize: 13, fontWeight: '500' },
-  valuePill: { borderRadius: 99, paddingHorizontal: 10, paddingVertical: 3 },
+  infoLeft: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  infoIconBox: {
+    width: 32, height: 32, borderRadius: 8,
+    backgroundColor: '#f5f6f9', alignItems: 'center', justifyContent: 'center',
+  },
+  infoLabel: { fontSize: 12, color: '#8a8f9e' },
+  infoValue: { fontSize: 14, fontWeight: '500', color: '#0d1b3e', marginTop: 1 },
+
+  // Preferences rows
+  prefRow: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingVertical: 13, paddingHorizontal: 16,
+    borderBottomWidth: 0.5, borderBottomColor: '#eef0f5',
+  },
+  prefLeft: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  prefIconBox: {
+    width: 32, height: 32, borderRadius: 8,
+    backgroundColor: '#f5f6f9', alignItems: 'center', justifyContent: 'center',
+  },
+  prefLabel: { fontSize: 14, fontWeight: '500', color: '#0d1b3e' },
+  prefSub: { fontSize: 12, color: '#8a8f9e', marginTop: 1 },
+
+  // Sign out
   signOutBtn: {
-    backgroundColor: Colors.red, borderRadius: 14,
-    padding: 15, alignItems: 'center', marginBottom: 10,
+    marginHorizontal: 16, marginBottom: 8,
+    backgroundColor: '#fef2f2',
+    borderWidth: 1, borderColor: '#fca5a5',
+    borderRadius: 12, padding: 14, alignItems: 'center',
   },
-  signOutText: { color: Colors.white, fontSize: 15, fontWeight: '600' },
+  signOutText: { color: '#991b1b', fontSize: 15, fontWeight: '500' },
+
+  // Version
   appVersion: {
-    textAlign: 'center', fontSize: 11,
-    marginTop: 4, paddingBottom: 16,
+    fontSize: 11, color: '#c0c4d0',
+    textAlign: 'center', paddingBottom: 16, marginTop: 4,
   },
 });

@@ -1,37 +1,523 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
-  View, Text, ScrollView, TouchableOpacity, StyleSheet, Platform,
+  View, Text, ScrollView, TouchableOpacity, StyleSheet,
+  Platform, ActivityIndicator, Image, TextInput,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../theme/colors';
-import { MOCK_QUESTIONS } from '../mocks/data';
 import { useTheme, DarkColors, LightColors } from '../theme/ThemeContext';
+import {
+  fetchAudit, fetchTemplate,
+  Question, GraphNode, GraphEdge,
+  isFlatSchema, isGraphSchema,
+} from '../services/auditService';
+import { saveAnswer } from '../services/syncService';
+import { setLocalAuditStatus } from '../services/auditStatusService';
+import * as authService from '../services/authService';
+import CameraModal from '../components/CameraModal';
+import SubmitModal from '../components/SubmitModal';
+
+
+// ── Pure graph helpers (no component state) ───────────────────────────────────
+
+function findRoot(nodes: GraphNode[], edges: GraphEdge[]): string {
+  const targets = new Set(edges.map(e => e.targetNodeId));
+  return nodes.find(n => !targets.has(n.id))?.id ?? nodes[0]?.id ?? '';
+}
+
+// Maps a user answer value to the edge handle expected by the graph.
+// boolean/booleanNode: pass→yes, fail→no, anything else→out.
+// All other node types follow the unconditional 'out' edge.
+function resolveHandle(type: string, answer: string): 'yes' | 'no' | 'out' {
+  if (type === 'boolean' || type === 'booleanNode') {
+    if (answer === 'pass') return 'yes';
+    if (answer === 'fail') return 'no';
+  }
+  return 'out';
+}
+
+function findNextNodeId(
+  edges: GraphEdge[],
+  fromId: string,
+  type: string,
+  answer: string,
+): string | null {
+  const handle = resolveHandle(type, answer);
+  const edge =
+    edges.find(e => e.sourceNodeId === fromId && e.sourceHandle === handle) ??
+    edges.find(e => e.sourceNodeId === fromId && e.sourceHandle === 'out');
+  return edge?.targetNodeId ?? null;
+}
+
+// Replays existing responses through the graph to reconstruct the already-traversed path.
+function buildInitialPath(
+  rootId: string,
+  nodeMap: Map<string, GraphNode>,
+  edges: GraphEdge[],
+  responses: Record<string, string>,
+): string[] {
+  const path = [rootId];
+  let cur = rootId;
+  while (true) {
+    const answer = responses[cur];
+    if (!answer) break;
+    const node = nodeMap.get(cur);
+    if (!node) break;
+    const next = findNextNodeId(edges, cur, node.type, answer);
+    if (!next || path.includes(next)) break; // end of graph or cycle guard
+    path.push(next);
+    cur = next;
+  }
+  return path;
+}
+
+// ── Component ─────────────────────────────────────────────────────────────────
 
 export default function ChecklistScreen({ route, navigation }: any) {
   const { isDark } = useTheme();
   const theme = isDark ? DarkColors : LightColors;
 
-  const [responses, setResponses] = useState<Record<string, string>>({
-    'hyg-01': 'pass',
-    'hyg-02': 'fail',
-    'eqp-02': 'pass',
-    'adm-01': 'na',
-  });
+  const { auditId } = route.params as { auditId: string };
 
-  function isBlocked(question: typeof MOCK_QUESTIONS[0]): boolean {
-    if (!question.prerequisiteId) return false;
-    return responses[question.prerequisiteId] !== 'pass';
+  // ── Shared state ──────────────────────────────────────────────────────────
+  const [loading, setLoading]       = useState(true);
+  const [error, setError]           = useState<string | null>(null);
+  const [responses, setResponses]   = useState<Record<string, string>>({});
+  const [schemaMode, setSchemaMode] = useState<'flat' | 'graph' | null>(null);
+
+  // ── Flat-mode state ───────────────────────────────────────────────────────
+  const [questions, setQuestions] = useState<Question[]>([]);
+
+  // ── Graph-mode state ──────────────────────────────────────────────────────
+  const [graphNodes, setGraphNodes]         = useState<GraphNode[]>([]);
+  const [graphEdges, setGraphEdges]         = useState<GraphEdge[]>([]);
+  const [visibleNodeIds, setVisibleNodeIds] = useState<string[]>([]);
+
+  // ── Camera state ──────────────────────────────────────────────────────────
+  const [cameraVisible, setCameraVisible] = useState(false);
+  const [photoUris, setPhotoUris]         = useState<Record<string, string>>({});
+  const [activeNodeId, setActiveNodeId]   = useState<string | null>(null);
+
+  // ── Submit state ──────────────────────────────────────────────────────────
+  const [submitModalVisible, setSubmitModalVisible] = useState(false);
+  const [isSubmitting, setIsSubmitting]             = useState(false);
+
+  // ── Load ──────────────────────────────────────────────────────────────────
+  useEffect(() => {
+    async function load() {
+      setLoading(true);
+      setError(null);
+
+      let audit;
+      try {
+        audit = await fetchAudit(auditId);
+      } catch (e) {
+        setError('Failed to load audit. Please try again.');
+        setLoading(false);
+        return;
+      }
+
+      const initial: Record<string, string> = {};
+      audit.responses?.forEach((a: any) => { initial[a.question_id] = a.answer_value; });
+      setResponses(initial);
+
+      if (!audit.template_id) {
+        setError('Aucun template assigné à cet audit.');
+        setLoading(false);
+        return;
+      }
+
+      let template;
+      try {
+        template = await fetchTemplate(audit.template_id);
+      } catch (e) {
+        setError('Failed to load checklist questions. Please try again.');
+        setLoading(false);
+        return;
+      }
+
+      const { schema } = template;
+
+      if (isGraphSchema(schema) && schema.nodes.length > 0) {
+        const nodeMap = new Map(schema.nodes.map(n => [n.id, n]));
+        const rootId  = findRoot(schema.nodes, schema.edges);
+        const path    = buildInitialPath(rootId, nodeMap, schema.edges, initial);
+        setGraphNodes(schema.nodes);
+        setGraphEdges(schema.edges);
+        setVisibleNodeIds(path);
+        setSchemaMode('graph');
+      } else {
+        // isFlatSchema covers both the flat case and any unrecognised schema shape
+        setQuestions(isFlatSchema(schema) ? schema.questions : []);
+        setSchemaMode('flat');
+      }
+
+      setLoading(false);
+    }
+    load();
+  }, [auditId]);
+
+  // ── Flat helpers ──────────────────────────────────────────────────────────
+
+  function isBlocked(q: Question): boolean {
+    if (!q.parent_question_id || !q.prerequisite_condition) return false;
+    const parentValue = responses[q.parent_question_id];
+    if (q.prerequisite_condition === 'EQUALS_YES') return parentValue !== 'pass';
+    if (q.prerequisite_condition === 'EQUALS_NO')  return parentValue !== 'fail';
+    if (q.prerequisite_condition === 'COMPLETED')  return !parentValue || parentValue === '';
+    return false;
   }
 
-  function setResponse(questionId: string, value: string) {
+  async function handleFlatAnswer(questionId: string, value: string) {
     setResponses(prev => ({ ...prev, [questionId]: value }));
+    await saveAnswer(auditId, questionId, value);
   }
 
-  const sections = [...new Set(MOCK_QUESTIONS.map(q => q.sectionLabel))];
-  const applicable = MOCK_QUESTIONS.filter(q => !isBlocked(q));
-  const answered = applicable.filter(q => responses[q.id]);
-  const progress = applicable.length > 0 ? Math.round((answered.length / applicable.length) * 100) : 0;
+  // ── Graph helpers ─────────────────────────────────────────────────────────
+
+  async function handleGraphAnswer(nodeId: string, nodeType: string, value: string) {
+    setResponses(prev => ({ ...prev, [nodeId]: value }));
+    await saveAnswer(auditId, nodeId, value);
+    // Only advance the path when answering the current (last) node.
+    // Re-answering a previous node updates the stored value but does not re-traverse.
+    if (visibleNodeIds[visibleNodeIds.length - 1] === nodeId) {
+      const next = findNextNodeId(graphEdges, nodeId, nodeType, value);
+      if (next) {
+        setVisibleNodeIds(prev => prev.includes(next) ? prev : [...prev, next]);
+      }
+    }
+  }
+
+  // ── Progress ──────────────────────────────────────────────────────────────
+
+  const flatApplicable = schemaMode === 'flat' ? questions.filter(q => !isBlocked(q)) : [];
+  const flatAnswered   = flatApplicable.filter(q => responses[q.question_id]);
+  const flatProgress   = flatApplicable.length > 0
+    ? Math.round((flatAnswered.length / flatApplicable.length) * 100)
+    : 0;
+
+  const graphAnsweredCount = visibleNodeIds.filter(id => responses[id]).length;
+
+  const progressLabel = schemaMode === 'graph'
+    ? `${graphAnsweredCount} answered`
+    : `${flatAnswered.length}/${flatApplicable.length} items • ${flatProgress}%`;
+
+  // Graph uses answered/visible as a best-effort fill; flat uses the real percentage.
+  const progressFillPct = schemaMode === 'graph'
+    ? (visibleNodeIds.length > 0
+        ? Math.round((graphAnsweredCount / visibleNodeIds.length) * 100)
+        : 0)
+    : flatProgress;
+
+  // ── Submit stats (derived — no extra state) ──────────────────────────────
+
+  const stats = schemaMode === 'graph'
+    ? {
+        total:    visibleNodeIds.length,
+        answered: graphAnsweredCount,
+        fails:    visibleNodeIds.filter(id => responses[id] === 'fail').length,
+      }
+    : {
+        total:    flatApplicable.length,
+        answered: flatAnswered.length,
+        fails:    flatApplicable.filter(q => responses[q.question_id] === 'fail').length,
+      };
+
+  // ── Submit handler ────────────────────────────────────────────────────────
+
+  async function handleSubmit() {
+    setIsSubmitting(true);
+    try {
+      const token = await authService.getToken();
+      await setLocalAuditStatus(auditId, 'soumis');
+      await fetch(`https://api.acomed.tech/api/audits/${auditId}/status`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ status: 'soumis' }),
+      });
+    } catch (e) {
+      console.warn('[Checklist] Submit failed — will retry on sync', e);
+      // Offline submit is acceptable — sync engine will retry
+    } finally {
+      setIsSubmitting(false);
+      setSubmitModalVisible(false);
+      navigation.goBack();
+    }
+  }
+
+  // ── Shared card header ────────────────────────────────────────────────────
+
+  function renderCardHeader(qId: string, cur: string | undefined, blocked: boolean) {
+    let circleIcon: any = 'ellipse-outline';
+    let circleColor     = theme.text3;
+    if (cur === 'pass')        { circleIcon = 'checkmark';               circleColor = '#1A6B4A'; }
+    else if (cur === 'fail')   { circleIcon = 'close';                   circleColor = '#C0392B'; }
+    else if (cur === 'na')     { circleIcon = 'remove';                  circleColor = '#94A3B8'; }
+    else if (cur)              { circleIcon = 'checkmark-circle-outline'; circleColor = '#1A6B4A'; }
+
+    return (
+      <View style={styles.qHeader}>
+        <View style={styles.qHeaderLeft}>
+          <View style={[styles.qCodeBadge, { backgroundColor: theme.background }]}>
+            <Text style={[styles.qCodeText, { color: theme.text2 }]}>{qId}</Text>
+          </View>
+          {blocked ? (
+            <View style={[styles.tag, { backgroundColor: isDark ? '#1E293B' : '#F1F5F9' }]}>
+              <Text style={[styles.tagText, { color: '#64748B' }]}>Bloqué</Text>
+            </View>
+          ) : cur === 'pass' ? (
+            <View style={[styles.tag, { backgroundColor: '#E8F5EF' }]}>
+              <Text style={[styles.tagText, { color: '#1A6B4A' }]}>Conforme</Text>
+            </View>
+          ) : cur === 'fail' ? (
+            <View style={[styles.tag, { backgroundColor: '#FDEDEC' }]}>
+              <Text style={[styles.tagText, { color: '#C0392B' }]}>Non conforme</Text>
+            </View>
+          ) : cur === 'na' ? (
+            <View style={[styles.tag, { backgroundColor: isDark ? '#1E293B' : '#F1F5F9' }]}>
+              <Text style={[styles.tagText, { color: '#475569' }]}>N/A</Text>
+            </View>
+          ) : cur ? (
+            <View style={[styles.tag, { backgroundColor: '#E8F5EF' }]}>
+              <Text style={[styles.tagText, { color: '#1A6B4A' }]}>Complété</Text>
+            </View>
+          ) : (
+            <View style={[styles.tag, { backgroundColor: isDark ? '#1E293B' : Colors.grayLight }]}>
+              <Text style={[styles.tagText, { color: isDark ? '#94A3B8' : Colors.gray }]}>En attente</Text>
+            </View>
+          )}
+        </View>
+        <View style={[
+          styles.circleIndicator, { borderColor: theme.borderColor },
+          cur === 'pass' && styles.circlePass,
+          cur === 'fail' && styles.circleFail,
+          cur === 'na'   && styles.circleNa,
+          blocked && { borderColor: theme.borderColor, backgroundColor: isDark ? '#1E293B' : Colors.grayLight },
+        ]}>
+          <Ionicons name={circleIcon} size={14} color={circleColor} />
+        </View>
+      </View>
+    );
+  }
+
+  // ── Boolean answer buttons ────────────────────────────────────────────────
+
+  function renderBooleanButtons(
+    cur: string | undefined,
+    onAnswer: (val: string) => void,
+  ) {
+    return (
+      <View style={styles.answerBtnRow}>
+        <TouchableOpacity
+          style={[styles.answerBtn, cur === 'pass' ? styles.answerBtnPassActive : { borderColor: '#1A6B4A' }]}
+          onPress={() => onAnswer('pass')}
+        >
+          <Text style={[styles.answerBtnText, { color: '#1A6B4A' }]}>Conforme</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.answerBtn, cur === 'fail' ? styles.answerBtnFailActive : { borderColor: '#C0392B' }]}
+          onPress={() => onAnswer('fail')}
+        >
+          <Text style={[styles.answerBtnText, { color: '#C0392B' }]}>Non conforme</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.answerBtn, cur === 'na' ? styles.answerBtnNaActive : { borderColor: '#94A3B8' }]}
+          onPress={() => onAnswer('na')}
+        >
+          <Text style={[styles.answerBtnText, { color: '#64748B' }]}>N/A</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
+
+  // ── Graph node input (only shown on the current/last node) ────────────────
+
+  function renderNodeInput(node: GraphNode, cur: string | undefined) {
+    switch (node.type) {
+      case 'boolean':
+      case 'booleanNode':
+        return renderBooleanButtons(
+          cur,
+          (val) => handleGraphAnswer(node.id, node.type, val),
+        );
+
+      case 'text':
+        // TODO: replace with real TextInput and persist typed value
+        return (
+          <TouchableOpacity
+            style={[styles.placeholderBtn, { borderColor: theme.borderColor, backgroundColor: isDark ? '#1E293B' : Colors.grayLight }]}
+            onPress={() => handleGraphAnswer(node.id, node.type, 'done')}
+          >
+            <Ionicons name="create-outline" size={15} color={theme.text2} />
+            <Text style={[styles.placeholderText, { color: theme.text2 }]}>Continuer</Text>
+          </TouchableOpacity>
+        );
+
+      case 'camera':
+        return (
+          <View style={styles.cameraInputWrap}>
+            {photoUris[node.id] ? (
+              <View style={styles.photoPreviewRow}>
+                <Image source={{ uri: photoUris[node.id] }} style={styles.photoThumbnail} />
+                <TouchableOpacity
+                  style={[styles.placeholderBtn, { borderColor: theme.borderColor, backgroundColor: isDark ? '#1E293B' : Colors.grayLight, flex: 1 }]}
+                  onPress={() => { setActiveNodeId(node.id); setCameraVisible(true); }}
+                >
+                  <Ionicons name="refresh-outline" size={15} color={theme.text2} />
+                  <Text style={[styles.placeholderText, { color: theme.text2 }]}>Reprendre</Text>
+                </TouchableOpacity>
+              </View>
+            ) : (
+              <TouchableOpacity
+                style={[styles.placeholderBtn, { borderColor: theme.borderColor, backgroundColor: isDark ? '#1E293B' : Colors.grayLight }]}
+                onPress={() => { setActiveNodeId(node.id); setCameraVisible(true); }}
+              >
+                <Ionicons name="camera-outline" size={15} color={theme.text2} />
+                <Text style={[styles.placeholderText, { color: theme.text2 }]}>Prendre une photo</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        );
+
+      case 'signature':
+        // TODO: implement signature pad
+        return (
+          <TouchableOpacity
+            style={[styles.placeholderBtn, { borderColor: theme.borderColor, backgroundColor: isDark ? '#1E293B' : Colors.grayLight }]}
+            onPress={() => handleGraphAnswer(node.id, node.type, 'signature_placeholder')}
+          >
+            <Ionicons name="pencil-outline" size={15} color={theme.text2} />
+            <Text style={[styles.placeholderText, { color: theme.text2 }]}>Signer ici</Text>
+          </TouchableOpacity>
+        );
+
+      default:
+        // Unknown node type — fall back to boolean buttons
+        return renderBooleanButtons(
+          cur,
+          (val) => handleGraphAnswer(node.id, node.type, val),
+        );
+    }
+  }
+
+  // ── Flat list ─────────────────────────────────────────────────────────────
+
+  function renderFlatList() {
+    return (
+      <ScrollView style={styles.body} showsVerticalScrollIndicator={false}>
+        {questions.map(q => {
+          const blocked = isBlocked(q);
+          if (blocked) return null;
+          const cur     = responses[q.question_id];
+          return (
+            <View
+              key={q.question_id}
+              style={[styles.questionCard, { backgroundColor: theme.cardBg, borderColor: theme.borderColor }]}
+            >
+              <View style={[
+                styles.cardAccent,
+                cur === 'pass' && { backgroundColor: '#1A6B4A' },
+                cur === 'fail' && { backgroundColor: '#C0392B' },
+                cur === 'na'   && { backgroundColor: '#94A3B8' },
+              ]} />
+              {renderCardHeader(q.question_id, cur, false)}
+              <Text style={[styles.qText, { color: theme.text }]}>{q.label}</Text>
+              {(q.type === 'booleanNode' || q.type === 'boolean') &&
+                renderBooleanButtons(cur, (val) => handleFlatAnswer(q.question_id, val))
+              }
+              {(q.type === 'text' || q.type === 'textNode') && (
+                <TextInput
+                  style={[styles.textInput, {
+                    color: theme.text,
+                    borderColor: theme.borderColor,
+                    backgroundColor: theme.cardBg,
+                  }]}
+                  placeholder="Saisir votre réponse..."
+                  placeholderTextColor={theme.text3}
+                  value={responses[q.question_id] || ''}
+                  onChangeText={(val) => handleFlatAnswer(q.question_id, val)}
+                  multiline
+                  numberOfLines={3}
+                />
+              )}
+              {(q.type === 'camera' || q.type === 'photo') && (
+                <TouchableOpacity
+                  style={[styles.placeholderBtn, {
+                    borderColor: theme.borderColor,
+                    backgroundColor: isDark ? '#1E293B' : Colors.grayLight,
+                  }]}
+                  onPress={() => { setActiveNodeId(q.question_id); setCameraVisible(true); }}
+                >
+                  <Ionicons name="camera-outline" size={15} color={theme.text2} />
+                  <Text style={[styles.placeholderText, { color: theme.text2 }]}>
+                    {photoUris[q.question_id] ? 'Reprendre la photo' : 'Prendre une photo'}
+                  </Text>
+                </TouchableOpacity>
+              )}
+              {(q.type === 'camera' || q.type === 'photo') && photoUris[q.question_id] && (
+                <Image source={{ uri: photoUris[q.question_id] }} style={styles.photoThumbnail} />
+              )}
+            </View>
+          );
+        })}
+        <Text style={[styles.endLabel, { color: theme.text3 }]}>END OF CHECKLIST</Text>
+        <View style={{ height: 120 }} />
+      </ScrollView>
+    );
+  }
+
+  // ── Graph list ────────────────────────────────────────────────────────────
+
+  function renderGraphList() {
+    const nodeMap   = new Map(graphNodes.map(n => [n.id, n]));
+    const lastId    = visibleNodeIds[visibleNodeIds.length - 1];
+    const lastNode  = lastId ? nodeMap.get(lastId) : undefined;
+    const lastAns   = lastId ? responses[lastId] : undefined;
+
+    // Show end-of-checklist when the last visible node is answered and has no outgoing edge.
+    const isComplete = !!(lastNode && lastAns &&
+      findNextNodeId(graphEdges, lastId, lastNode.type, lastAns) === null);
+
+    return (
+      <ScrollView style={styles.body} showsVerticalScrollIndicator={false}>
+        {visibleNodeIds.map((nodeId, idx) => {
+          const node      = nodeMap.get(nodeId);
+          if (!node) return null;
+          const cur       = responses[nodeId];
+          const isCurrent = idx === visibleNodeIds.length - 1;
+
+          return (
+            <View
+              key={nodeId}
+              style={[styles.questionCard, { backgroundColor: theme.cardBg, borderColor: theme.borderColor }]}
+            >
+              <View style={[
+                styles.cardAccent,
+                cur === 'pass' && { backgroundColor: '#1A6B4A' },
+                cur === 'fail' && { backgroundColor: '#C0392B' },
+                cur === 'na'   && { backgroundColor: '#94A3B8' },
+              ]} />
+              {renderCardHeader(nodeId, cur, false)}
+              <Text style={[styles.qText, { color: theme.text }]}>{node.label}</Text>
+              {/* Only the last (current) unanswered node shows interactive inputs.
+                  Previous nodes display their answer via the header tag only. */}
+              {isCurrent && renderNodeInput(node, cur)}
+            </View>
+          );
+        })}
+        {isComplete && (
+          <Text style={[styles.endLabel, { color: theme.text3 }]}>END OF CHECKLIST</Text>
+        )}
+        <View style={{ height: 120 }} />
+      </ScrollView>
+    );
+  }
+
+  // ── Render ────────────────────────────────────────────────────────────────
 
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: theme.background, paddingTop: Platform.OS === 'android' ? 35 : 0 }]}>
@@ -41,168 +527,130 @@ export default function ChecklistScreen({ route, navigation }: any) {
         <TouchableOpacity onPress={() => navigation.goBack()}>
           <Text style={[styles.backBtn, { color: theme.text }]}>‹</Text>
         </TouchableOpacity>
-        <Text style={[styles.topBarTitle, { color: theme.text }]}>Checklist</Text>
-        <View style={[styles.offlineBadge, { backgroundColor: isDark ? '#1E293B' : Colors.grayLight, borderColor: theme.borderColor }]}>
-          <Text style={[styles.offlineText, { color: theme.text2 }]}>OFFLINE</Text>
-        </View>
+        <Text style={[styles.topBarTitle, { color: theme.text }]}>Checklist d'audit</Text>
+        <View style={{ width: 28 }} />
       </View>
 
       {/* ── PROGRESS BAR ── */}
       <View style={[styles.progressContainer, { backgroundColor: theme.white, borderBottomColor: theme.borderColor }]}>
-        <View style={[styles.progressWrap, { backgroundColor: theme.borderColor }]}>
-          <View style={[styles.progressFill, { width: `${progress}%` as any }]} />
+        <View style={styles.progressLabelRow}>
+          <Text style={[styles.progressLabelLeft, { color: theme.text2 }]}>PROGRESSION</Text>
+          <Text style={[styles.progressLabelRight, { color: theme.text2 }]}>{progressLabel}</Text>
         </View>
-        <Text style={[styles.progressLabel, { color: theme.text2 }]}>{answered.length}/{applicable.length} items • {progress}%</Text>
+        <View style={[styles.progressWrap, { backgroundColor: theme.borderColor }]}>
+          <View style={[styles.progressFill, { width: `${progressFillPct}%` as any }]} />
+        </View>
       </View>
 
-      <ScrollView style={styles.body} showsVerticalScrollIndicator={false}>
-        {sections.map(sectionLabel => {
-          const sectionQuestions = MOCK_QUESTIONS.filter(q => q.sectionLabel === sectionLabel);
-          return (
-            <View key={sectionLabel}>
-              <View style={styles.sectionHeader}>
-                <View style={styles.sectionLine} />
-                <Text style={[styles.sectionLabel, { color: theme.text2 }]}>{sectionLabel}</Text>
-              </View>
+      {loading ? (
+        <View style={styles.centered}>
+          <ActivityIndicator size="large" color={Colors.green} />
+        </View>
+      ) : error ? (
+        <View style={styles.centered}>
+          <Ionicons name="alert-circle-outline" size={32} color={Colors.red} />
+          <Text style={[styles.errorText, { color: Colors.red }]}>{error}</Text>
+        </View>
+      ) : schemaMode === 'flat' ? (
+        renderFlatList()
+      ) : (
+        renderGraphList()
+      )}
 
-              {sectionQuestions.map(q => {
-                const blocked = isBlocked(q);
-                const cur = responses[q.id];
+      {/* ── SUBMIT MODAL ── */}
+      <SubmitModal
+        visible={submitModalVisible}
+        onClose={() => setSubmitModalVisible(false)}
+        onConfirm={handleSubmit}
+        isSubmitting={isSubmitting}
+        stats={stats}
+      />
 
-                // Pick name for the circle indicator
-                let circleIconName: any = 'ellipse-outline';
-                let circleIconColor = theme.text3;
-                if (cur === 'pass')  { circleIconName = 'checkmark'; circleIconColor = Colors.green; }
-                if (cur === 'fail')  { circleIconName = 'close';     circleIconColor = Colors.red; }
-                if (cur === 'na')    { circleIconName = 'remove';    circleIconColor = '#94A3B8'; }
-
-                return (
-                  <TouchableOpacity
-                    key={q.id}
-                    style={[
-                      styles.questionCard,
-                      { backgroundColor: theme.cardBg, borderColor: theme.borderColor },
-                      blocked && styles.questionCardBlocked,
-                    ]}
-                    onPress={() => !blocked && navigation.navigate('ItemDetail', { questionId: q.id })}
-                    disabled={blocked}
-                  >
-                    <View style={styles.qHeader}>
-                      <View style={styles.qHeaderLeft}>
-                        <View style={styles.qCodeBadge}>
-                          <Text style={styles.qCodeText}>{q.code}</Text>
-                        </View>
-                        {/* Status tag */}
-                        {blocked ? (
-                          <View style={[styles.tag, { backgroundColor: isDark ? '#1E293B' : '#F1F5F9' }]}>
-                            <Text style={[styles.tagText, { color: '#64748B' }]}>Blocked</Text>
-                          </View>
-                        ) : cur === 'pass' ? (
-                          <View style={[styles.tag, { backgroundColor: Colors.greenLight }]}>
-                            <Text style={[styles.tagText, { color: Colors.greenDark }]}>Pass</Text>
-                          </View>
-                        ) : cur === 'fail' ? (
-                          <View style={[styles.tag, { backgroundColor: Colors.redLight }]}>
-                            <Text style={[styles.tagText, { color: Colors.red }]}>Fail</Text>
-                          </View>
-                        ) : cur === 'na' ? (
-                          <View style={[styles.tag, { backgroundColor: isDark ? '#1E293B' : '#F1F5F9' }]}>
-                            <Text style={[styles.tagText, { color: '#475569' }]}>N/A</Text>
-                          </View>
-                        ) : (
-                          <View style={[styles.tag, { backgroundColor: isDark ? '#1E293B' : Colors.grayLight }]}>
-                            <Text style={[styles.tagText, { color: isDark ? '#94A3B8' : Colors.gray }]}>Pending</Text>
-                          </View>
-                        )}
-                      </View>
-                      {/* Circle indicator */}
-                      <View style={[
-                        styles.circleIndicator,
-                        { borderColor: theme.borderColor },
-                        cur === 'pass' && styles.circlePass,
-                        cur === 'fail' && styles.circleFail,
-                        cur === 'na'   && styles.circleNa,
-                        blocked        && { borderColor: theme.borderColor, backgroundColor: isDark ? '#1E293B' : Colors.grayLight },
-                      ]}>
-                        <Ionicons name={circleIconName} size={14} color={circleIconColor} />
-                      </View>
-                    </View>
-
-                    <Text style={[styles.qText, { color: blocked ? theme.text3 : theme.text }]}>
-                      {blocked ? 'Blocked — prerequisite not met' : q.text}
-                    </Text>
-
-                    <View style={styles.qMeta}>
-                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                        <Ionicons name="camera-outline" size={12} color={theme.text3} />
-                        <Text style={[styles.qMetaText, { color: theme.text3 }]}>{q.hasPhoto ? 'Photo' : 'No Photo'}</Text>
-                      </View>
-                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                        <Ionicons name="document-text-outline" size={12} color={theme.text3} />
-                        <Text style={[styles.qMetaText, { color: theme.text3 }]}>{q.hasNote ? 'Note' : 'No Note'}</Text>
-                      </View>
-                    </View>
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
-          );
-        })}
-
-        <Text style={[styles.endLabel, { color: theme.text3 }]}>END OF CHECKLIST</Text>
-        <View style={{ height: 120 }} />
-      </ScrollView>
+      {/* ── CAMERA MODAL ── */}
+      <CameraModal
+        visible={cameraVisible}
+        onClose={() => setCameraVisible(false)}
+        onPhotoCaptured={(uri) => {
+          if (activeNodeId) {
+            setPhotoUris(prev => ({ ...prev, [activeNodeId]: uri }));
+            if (schemaMode === 'flat') {
+              handleFlatAnswer(activeNodeId, uri);
+            } else {
+              handleGraphAnswer(activeNodeId, 'camera', uri);
+            }
+          }
+        }}
+      />
 
       {/* ── BOTTOM FINISH BUTTON ── */}
-      <View style={[styles.bottomBar, { backgroundColor: theme.white, borderTopColor: theme.borderColor }]}>
-        <TouchableOpacity style={styles.btnFinish}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-            <Ionicons name="checkmark" size={18} color={Colors.white} />
-            <Text style={styles.btnFinishText}>Terminer la visite</Text>
-          </View>
-        </TouchableOpacity>
-        <Text style={[styles.savedLabel, { color: theme.text3 }]}>Enregistrer localement • Dernière sauvegarde: il y a 2 min</Text>
-      </View>
+      {!loading && !error && (
+        <View style={[styles.bottomBar, { backgroundColor: theme.white, borderTopColor: theme.borderColor }]}>
+          <TouchableOpacity style={styles.btnFinish} onPress={() => setSubmitModalVisible(true)}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              <Ionicons name="checkmark" size={18} color="#ffffff" />
+              <Text style={styles.btnFinishText}>Terminer la visite</Text>
+            </View>
+          </TouchableOpacity>
+          <Text style={[styles.savedLabel, { color: theme.text3 }]}>Enregistrer localement • Dernière sauvegarde: il y a 2 min</Text>
+        </View>
+      )}
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   safe: { flex: 1 },
+
+  // Top bar
   topBar: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     paddingHorizontal: 20, paddingVertical: 10,
-    borderBottomWidth: 1,
+    borderBottomWidth: 0.5,
   },
-  backBtn: { fontSize: 28, lineHeight: 32 },
-  topBarTitle: { fontSize: 17, fontWeight: '600' },
-  offlineBadge: {
-    borderWidth: 1, borderRadius: 20,
-    paddingHorizontal: 10, paddingVertical: 4,
+  backBtn: { fontSize: 28, lineHeight: 32, color: '#0d1b3e' },
+  topBarTitle: { fontSize: 17, fontWeight: '600', color: '#0d1b3e' },
+
+  // Progress bar
+  progressContainer: { padding: 12, borderBottomWidth: 0.5 },
+  progressLabelRow: {
+    flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6,
   },
-  offlineText: { fontSize: 11, fontWeight: '700' },
-  progressContainer: {
-    padding: 12, borderBottomWidth: 1,
+  progressLabelLeft: {
+    fontSize: 11, fontWeight: '600', color: '#8a8f9e',
+    letterSpacing: 0.5, textTransform: 'uppercase',
   },
-  progressWrap: { height: 6, borderRadius: 99, overflow: 'hidden', marginBottom: 6 },
+  progressLabelRight: { fontSize: 11 },
+  progressWrap: { height: 8, borderRadius: 99, overflow: 'hidden' },
   progressFill: { height: '100%', backgroundColor: Colors.green, borderRadius: 99 },
-  progressLabel: { fontSize: 12, textAlign: 'right' },
+
+  // Loading / error
+  centered: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12 },
+  errorText: { fontSize: 14, textAlign: 'center', paddingHorizontal: 32 },
+
+  // Body
   body: { flex: 1, padding: 16 },
-  sectionHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 12, marginBottom: 8 },
-  sectionLine: { width: 18, height: 3, backgroundColor: Colors.green, borderRadius: 2 },
-  sectionLabel: { fontSize: 11, fontWeight: '700', letterSpacing: 0.7, textTransform: 'uppercase' },
+
+  // Question cards
   questionCard: {
-    borderRadius: 14, borderWidth: 1,
-    padding: 14, marginBottom: 10,
+    borderRadius: 14, borderWidth: 0.5,
+    padding: 16, marginBottom: 10,
+    overflow: 'hidden',
+    shadowColor: '#0d1b3e', shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04, shadowRadius: 3, elevation: 1,
   },
-  questionCardBlocked: { opacity: 0.5 },
+  cardAccent: {
+    position: 'absolute', left: 0, top: 0, bottom: 0,
+    width: 3, borderTopLeftRadius: 14, borderBottomLeftRadius: 14,
+  },
+
+  // Card header
   qHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 },
-  qHeaderLeft: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  qHeaderLeft: { flexDirection: 'row', alignItems: 'center', gap: 6, flex: 1 },
   qCodeBadge: {
-    backgroundColor: Colors.greenLight, borderRadius: 6,
+    backgroundColor: '#f5f6f9', borderRadius: 6,
     paddingHorizontal: 7, paddingVertical: 2,
   },
-  qCodeText: { fontSize: 11, fontWeight: '700', color: Colors.green },
+  qCodeText: { fontSize: 11, fontWeight: '600', color: '#8a8f9e' },
   tag: { borderRadius: 99, paddingHorizontal: 10, paddingVertical: 3 },
   tagText: { fontSize: 12, fontWeight: '600' },
   circleIndicator: {
@@ -210,20 +658,52 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     alignItems: 'center', justifyContent: 'center',
   },
-  circlePass: { borderColor: Colors.green, backgroundColor: Colors.greenLight },
-  circleFail: { borderColor: Colors.red, backgroundColor: Colors.redLight },
-  circleNa: { borderColor: '#94A3B8', backgroundColor: '#F1F5F9' },
-  qText: { fontSize: 14, lineHeight: 20, marginTop: 8, marginBottom: 6 },
-  qMeta: { flexDirection: 'row', gap: 12 },
-  qMetaText: { fontSize: 11 },
-  endLabel: { textAlign: 'center', fontSize: 11, padding: 12 },
-  bottomBar: {
-    borderTopWidth: 1, padding: 12,
+  circlePass: { borderColor: '#1A6B4A', backgroundColor: '#E8F5EF' },
+  circleFail: { borderColor: '#C0392B', backgroundColor: '#FDEDEC' },
+  circleNa:   { borderColor: '#94A3B8', backgroundColor: '#F1F5F9' },
+
+  // Question text
+  qText: { fontSize: 15, lineHeight: 22, marginTop: 8, marginBottom: 8 },
+
+  // Answer buttons
+  answerBtnRow: { flexDirection: 'row', gap: 8, marginTop: 10 },
+  answerBtn: {
+    flex: 1, borderRadius: 10, borderWidth: 1.5,
+    paddingVertical: 12, alignItems: 'center',
   },
+  answerBtnPassActive: { backgroundColor: '#E8F5EF', borderColor: '#1A6B4A' },
+  answerBtnFailActive: { backgroundColor: '#FDEDEC', borderColor: '#C0392B' },
+  answerBtnNaActive:   { backgroundColor: '#F1F5F9', borderColor: '#94A3B8' },
+  answerBtnText: { fontSize: 13, fontWeight: '700' },
+
+  // Camera / placeholder inputs
+  placeholderBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    borderWidth: 1.5, borderRadius: 10,
+    paddingVertical: 10, paddingHorizontal: 12, marginTop: 10,
+  },
+  placeholderText: { fontSize: 13 },
+  cameraInputWrap: { marginTop: 10 },
+  photoPreviewRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  photoThumbnail: { width: 80, height: 80, borderRadius: 8 },
+
+  // Text input
+  textInput: {
+    borderWidth: 1, borderRadius: 10,
+    padding: 10, marginTop: 10,
+    fontSize: 14, minHeight: 80,
+    textAlignVertical: 'top',
+  },
+
+  // End of checklist
+  endLabel: { textAlign: 'center', fontSize: 11, padding: 12 },
+
+  // Bottom bar
+  bottomBar: { borderTopWidth: 0.5, padding: 12 },
   btnFinish: {
-    backgroundColor: Colors.green, borderRadius: 14,
+    backgroundColor: '#0d1b3e', borderRadius: 14,
     padding: 16, alignItems: 'center',
   },
-  btnFinishText: { color: Colors.white, fontSize: 16, fontWeight: '600' },
+  btnFinishText: { color: '#ffffff', fontSize: 16, fontWeight: '600' },
   savedLabel: { textAlign: 'center', fontSize: 11, marginTop: 6, marginBottom: 4 },
 });

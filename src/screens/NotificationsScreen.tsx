@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity, StyleSheet, Platform,
 } from 'react-native';
@@ -16,12 +16,12 @@ type Notification = {
 };
 
 const MOCK_NOTIFICATIONS: Notification[] = [
-  { id: '1', hospitalName: 'Hôpital Al Ghassani',       location: 'Fès, Maroc',        date: 'Apr 22, 2026', read: false },
-  { id: '2', hospitalName: 'Centre de Santé Hay Nahda', location: 'Rabat, Maroc',      date: 'Apr 21, 2026', read: false },
-  { id: '3', hospitalName: 'CHP Moulay Youssef',        location: 'Casablanca, Maroc', date: 'Apr 20, 2026', read: true  },
+  { id: '1', hospitalName: 'Hôpital Al Ghassani',       location: 'Fès, Maroc',        date: 'Apr 22, 2026', read: true },
+  { id: '2', hospitalName: 'Centre de Santé Hay Nahda', location: 'Rabat, Maroc',      date: 'Apr 21, 2026', read: true },
+  { id: '3', hospitalName: 'CHP Moulay Youssef',        location: 'Casablanca, Maroc', date: 'Apr 20, 2026', read: true },
 ];
 
-export default function NotificationsScreen({ navigation }: any) {
+export default function NotificationsScreen({ navigation, onUnreadChange }: any) {
   const { isDark } = useTheme();
   const theme = isDark ? DarkColors : LightColors;
 
@@ -29,9 +29,16 @@ export default function NotificationsScreen({ navigation }: any) {
 
   function markAllRead() {
     setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+    // Immediately clear the tab badge
+    onUnreadChange?.(0);
   }
 
   const unreadCount = notifications.filter(n => !n.read).length;
+
+  // Keep the tab badge in sync whenever read state changes
+  useEffect(() => {
+    onUnreadChange?.(unreadCount);
+  }, [unreadCount]);
 
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: theme.background, paddingTop: Platform.OS === 'android' ? 35 : 0 }]}>
