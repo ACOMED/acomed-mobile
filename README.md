@@ -65,7 +65,7 @@ When the inspector triggers a sync, the queue is sent as a batch to the backend'
 ### Install and run
 
 ```bash
-git clone [<repo-url>](https://github.com/ACOMED/acomed-mobile.git)
+git clone https://github.com/ACOMED/acomed-mobile.git
 cd acomed-mobile
 npm install
 npx expo start
